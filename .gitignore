@@ -1,0 +1,41 @@
+### Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+### IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### VS Code
+.vscode/
+
+### Spring Boot
+*.jar
+*.war
+*.ear
+logs/
+
+### Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+### Environment
+.env
+application-local.yml
+application-local.properties
+
+### OS
+.DS_Store
+Thumbs.db
