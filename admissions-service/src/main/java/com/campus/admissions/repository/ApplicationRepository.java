@@ -22,7 +22,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Intege
     List<Application> findByUserId(Long userId);
     List<Application> findBySessionAndStatus(Session session, String status);
     List<Application> findBySessionAndFacultyAndStatus(Session session, Faculty faculty, String status);
-
+    boolean existsByUserIdAndSessionIdAndEnabled(Long userId, Integer sessionId, Integer enabled);
     @Query("SELECT a FROM addmissionapplic a WHERE a.session = :session AND a.faculty = :faculty " +
            "AND a.status IN ('PENDING','APPROVED','WAITING_LIST') ORDER BY a.waitingListPosition ASC NULLS FIRST")
     List<Application> findRankedBySessionAndFaculty(@Param("session") Session session,
@@ -35,4 +35,5 @@ public interface ApplicationRepository extends JpaRepository<Application, Intege
 
     @Query("SELECT a FROM addmissionapplic a WHERE a.status = 'APPROVED' AND a.confirmationDeadline < :now")
     List<Application> findExpiredApplications(@Param("now") Date now);
+
 }

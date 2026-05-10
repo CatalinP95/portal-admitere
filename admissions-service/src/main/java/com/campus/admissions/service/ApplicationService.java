@@ -4,12 +4,15 @@ import com.campus.admissions.model.*;
 import com.campus.admissions.repository.ApplicationRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -53,13 +56,27 @@ public class ApplicationService {
     // depunere cerere noua
     @Transactional
     public Application submit(Application application, Long userId) {
+
+        boolean exists = applicationRepository.existsByUserIdAndSessionIdAndEnabled(
+                userId,
+                application.getSession().getId(),
+                1);
+
+        if(exists) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Utilizatorul are deja o aplicatie pentru sesiunea curenta");
+        }
+
         Date now = new Date();
+
         application.setStatus(ApplicationStatus.PENDING.name());
         application.setDate(now);
         application.setEnabled(1);
         application.setUserId(userId);
         application.setCreatedBy(userId);
         application.setCreatedAt(now);
+
         return applicationRepository.save(application);
     }
 
