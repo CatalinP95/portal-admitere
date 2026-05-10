@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -39,6 +41,9 @@ public class User {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RefreshToken> refreshTokens = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -106,4 +111,7 @@ public class User {
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
+
+    public List<RefreshToken> getRefreshTokens() { return refreshTokens; }
+    public void setRefreshTokens(List<RefreshToken> refreshTokens) { this.refreshTokens = refreshTokens; }
 }

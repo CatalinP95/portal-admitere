@@ -1,0 +1,107 @@
+package com.campus.userservice.api;
+
+import com.campus.userservice.dto.LoginRequest;
+import com.campus.userservice.dto.RegisterRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+class AuthControllerTest {
+
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+
+    @Test
+    @Order(1)
+    void register_validRequest_returns200() throws Exception {
+        RegisterRequest req = new RegisterRequest();
+        req.setUsername("testuser");
+        req.setEmail("test@test.com");
+        req.setPassword("pass1234");
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.role").value("STUDENT"))
+                .andExpect(jsonPath("$.userId").exists());
+    }
+
+    @Test
+    @Order(2)
+    void login_validCredentials_returns200() throws Exception {
+        // register first
+        RegisterRequest reg = new RegisterRequest();
+        reg.setUsername("loginuser"); reg.setEmail("login@test.com"); reg.setPassword("pass1234");
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(reg)));
+
+        LoginRequest req = new LoginRequest();
+        req.setUsername("loginuser");
+        req.setPassword("pass1234");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists());
+    }
+
+    @Test
+    @Order(3)
+    void login_invalidCredentials_returns401() throws Exception {
+        LoginRequest req = new LoginRequest();
+        req.setUsername("nonexistent");
+        req.setPassword("wrongpass");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @Order(4)
+    void register_invalidEmail_returns400() throws Exception {
+        RegisterRequest req = new RegisterRequest();
+        req.setUsername("baduser");
+        req.setEmail("not-an-email");
+        req.setPassword("pass1234");
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Order(5)
+    void register_shortPassword_returns400() throws Exception {
+        RegisterRequest req = new RegisterRequest();
+        req.setUsername("baduser2");
+        req.setEmail("bad2@test.com");
+        req.setPassword("123");
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+}
