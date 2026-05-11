@@ -7,6 +7,9 @@ public class ApplicationRankDto {
     private Integer facultyId;
     private Float averageBac;
     private Integer formFunding;
+    private Float markDif1;
+    private Float markDif2;
+    private Float markDif3;
 
     public Long getApplicationId() { return applicationId; }
     public void setApplicationId(Long applicationId) { this.applicationId = applicationId; }
@@ -22,4 +25,13 @@ public class ApplicationRankDto {
 
     public Integer getFormFunding() { return formFunding; }
     public void setFormFunding(Integer formFunding) { this.formFunding = formFunding; }
+
+    public Float getMarkDif1() { return markDif1; }
+    public void setMarkDif1(Float markDif1) { this.markDif1 = markDif1; }
+
+    public Float getMarkDif2() { return markDif2; }
+    public void setMarkDif2(Float markDif2) { this.markDif2 = markDif2; }
+
+    public Float getMarkDif3() { return markDif3; }
+    public void setMarkDif3(Float markDif3) { this.markDif3 = markDif3; }
 }

@@ -22,13 +22,18 @@ class AlgorithmServiceTest {
     @Mock private AdmissionsClient admissionsClient;
     @InjectMocks private AlgorithmService algorithmService;
 
-    private ApplicationRankDto candidat(Long appId, Long userId, Integer facultyId, float medie) {
+    private ApplicationRankDto candidat(Long appId, Long userId, Integer facultyId,
+                                        float bac, float d1, float d2, float d3,
+                                        int formFunding) {
         ApplicationRankDto dto = new ApplicationRankDto();
         dto.setApplicationId(appId);
         dto.setUserId(userId);
         dto.setFacultyId(facultyId);
-        dto.setAverageBac(medie);
-        dto.setFormFunding(1);
+        dto.setAverageBac(bac);
+        dto.setMarkDif1(d1);
+        dto.setMarkDif2(d2);
+        dto.setMarkDif3(d3);
+        dto.setFormFunding(formFunding);
         return dto;
     }
 
@@ -41,77 +46,99 @@ class AlgorithmServiceTest {
     }
 
     @Test
-    void ranking_sortezaDescrescatorDupaMedie() {
-        // 3 candidați, 1 loc buget, 1 loc taxă
-        when(admissionsClient.getPendingApplications(1))
-                .thenReturn(List.of(
-                        candidat(1L, 10L, 1, 7.20f),
-                        candidat(2L, 20L, 1, 9.80f),
-                        candidat(3L, 30L, 1, 8.50f)
-                ));
-        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 1, 1));
+    void scorCompus_calculatCorect() {
+        // score = 0.6*9.0 + 0.2*8.0 + 0.1*7.0 + 0.1*6.0 = 5.4 + 1.6 + 0.7 + 0.6 = 8.3
+        ApplicationRankDto app = candidat(1L, 1L, 1, 9.0f, 8.0f, 7.0f, 6.0f, 1);
+        double score = algorithmService.computeScore(app);
+        assertEquals(8.3, score, 0.001);
+    }
+
+    @Test
+    void ranking_sortezaDupaScorCompus_nuDoarBac() {
+        // candidatul 1: bac=9.0, d1=5.0 → score=0.6*9+0.2*5+0.1*0+0.1*0 = 5.4+1.0 = 6.4
+        // candidatul 2: bac=7.0, d1=9.0 → score=0.6*7+0.2*9+0.1*0+0.1*0 = 4.2+1.8 = 6.0
+        // candidatul 3: bac=8.0, d1=8.0 → score=0.6*8+0.2*8+0.1*0+0.1*0 = 4.8+1.6 = 6.4 (egal cu 1)
+        when(admissionsClient.getPendingApplications(1)).thenReturn(List.of(
+                candidat(1L, 10L, 1, 9.0f, 5.0f, 0f, 0f, 1),
+                candidat(2L, 20L, 1, 7.0f, 9.0f, 0f, 0f, 1),
+                candidat(3L, 30L, 1, 8.0f, 8.0f, 0f, 0f, 1)
+        ));
+        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 1, 0));
         doNothing().when(admissionsClient).updateStatuses(any());
 
         AlgorithmResultDto result = algorithmService.runRanking(1);
 
         assertEquals(3, result.getTotalProcessed());
         assertEquals(1, result.getApprovedBuget());
-        assertEquals(1, result.getApprovedTaxa());
-        assertEquals(1, result.getWaitingList());
+        assertEquals(2, result.getWaitingList());
 
-        // verificam ca statusurile trimise sunt corecte
         ArgumentCaptor<BulkStatusRequest> captor = ArgumentCaptor.forClass(BulkStatusRequest.class);
         verify(admissionsClient).updateStatuses(captor.capture());
-
         List<ApplicationStatusUpdate> updates = captor.getValue().getUpdates();
-        // candidatul cu 9.80 (id=2) → APPROVED primul
-        assertEquals(2L, updates.get(0).getApplicationId());
-        assertEquals("APPROVED", updates.get(0).getStatus());
-        // candidatul cu 8.50 (id=3) → APPROVED al doilea
-        assertEquals(3L, updates.get(1).getApplicationId());
-        assertEquals("APPROVED", updates.get(1).getStatus());
-        // candidatul cu 7.20 (id=1) → WAITING_LIST
-        assertEquals(1L, updates.get(2).getApplicationId());
-        assertEquals("WAITING_LIST", updates.get(2).getStatus());
+
+        // candidatul 2 (score 6.0) trebuie sa fie WAITING_LIST
+        ApplicationStatusUpdate updateCand2 = updates.stream()
+                .filter(u -> u.getApplicationId().equals(2L)).findFirst().orElseThrow();
+        assertEquals("WAITING_LIST", updateCand2.getStatus());
     }
 
     @Test
-    void ranking_toiiInWaitingListCandLocuriZero() {
-        when(admissionsClient.getPendingApplications(1))
-                .thenReturn(List.of(
-                        candidat(1L, 10L, 1, 8.0f),
-                        candidat(2L, 20L, 1, 9.0f)
-                ));
-        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 0, 0));
-        doNothing().when(admissionsClient).updateStatuses(any());
-
-        AlgorithmResultDto result = algorithmService.runRanking(1);
-
-        assertEquals(2, result.getTotalProcessed());
-        assertEquals(0, result.getApprovedBuget());
-        assertEquals(0, result.getApprovedTaxa());
-        assertEquals(2, result.getWaitingList());
-    }
-
-    @Test
-    void ranking_douaFacultatiIndependent() {
-        when(admissionsClient.getPendingApplications(1))
-                .thenReturn(List.of(
-                        candidat(1L, 10L, 1, 9.0f),
-                        candidat(2L, 20L, 1, 7.0f),
-                        candidat(3L, 30L, 2, 8.5f),
-                        candidat(4L, 40L, 2, 6.0f)
-                ));
-        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 1, 0));
-        when(admissionsClient.getFacultySpots(2)).thenReturn(spots(2, 1, 0));
+    void ranking_bugetisteOcupaLocuriBuget_taxistiiPeLocuriTaxa() {
+        when(admissionsClient.getPendingApplications(1)).thenReturn(List.of(
+                candidat(1L, 10L, 1, 9.5f, 9.0f, 8.0f, 8.0f, 1), // bugetist
+                candidat(2L, 20L, 1, 8.0f, 7.0f, 7.0f, 7.0f, 1), // bugetist
+                candidat(3L, 30L, 1, 9.0f, 8.5f, 8.0f, 8.0f, 2), // taxist
+                candidat(4L, 40L, 1, 7.0f, 6.0f, 6.0f, 6.0f, 2)  // taxist
+        ));
+        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 2, 1));
         doNothing().when(admissionsClient).updateStatuses(any());
 
         AlgorithmResultDto result = algorithmService.runRanking(1);
 
         assertEquals(4, result.getTotalProcessed());
-        assertEquals(2, result.getApprovedBuget()); // cate 1 de la fiecare facultate
-        assertEquals(0, result.getApprovedTaxa());
-        assertEquals(2, result.getWaitingList());
+        assertEquals(2, result.getApprovedBuget()); // cei 2 bugetisti
+        assertEquals(1, result.getApprovedTaxa());  // primul taxist
+        assertEquals(1, result.getWaitingList());   // al doilea taxist
+    }
+
+    @Test
+    void ranking_locuriRamaseBuget_completateDeTaxisti() {
+        // 1 loc buget, 0 bugetisti → taxistul cu scorul cel mai mare ia locul buget
+        when(admissionsClient.getPendingApplications(1)).thenReturn(List.of(
+                candidat(1L, 10L, 1, 9.0f, 9.0f, 9.0f, 9.0f, 2), // taxist
+                candidat(2L, 20L, 1, 7.0f, 7.0f, 7.0f, 7.0f, 2)  // taxist
+        ));
+        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 1, 1));
+        doNothing().when(admissionsClient).updateStatuses(any());
+
+        AlgorithmResultDto result = algorithmService.runRanking(1);
+
+        assertEquals(2, result.getTotalProcessed());
+        assertEquals(1, result.getApprovedBuget()); // taxistul a luat locul buget ramas
+        assertEquals(1, result.getApprovedTaxa());
+        assertEquals(0, result.getWaitingList());
+    }
+
+    @Test
+    void ranking_raportPerFacultateCorect() {
+        when(admissionsClient.getPendingApplications(1)).thenReturn(List.of(
+                candidat(1L, 10L, 1, 9.0f, 9.0f, 9.0f, 9.0f, 1),
+                candidat(2L, 20L, 1, 6.0f, 6.0f, 6.0f, 6.0f, 1),
+                candidat(3L, 30L, 2, 8.0f, 8.0f, 8.0f, 8.0f, 2)
+        ));
+        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 1, 1));
+        when(admissionsClient.getFacultySpots(2)).thenReturn(spots(2, 1, 0));
+        doNothing().when(admissionsClient).updateStatuses(any());
+
+        AlgorithmResultDto result = algorithmService.runRanking(1);
+
+        assertFalse(result.getFaculties().isEmpty());
+        FacultyRankingResult fac1 = result.getFaculties().stream()
+                .filter(f -> f.getFacultyId().equals(1)).findFirst().orElseThrow();
+        assertEquals(2, fac1.getTotalCandidates());
+        assertEquals(1, fac1.getApprovedBuget());
+        assertEquals(1, fac1.getWaitingList());
+        assertTrue(fac1.getMinimumScore() > 0);
     }
 
     @Test
@@ -123,25 +150,25 @@ class AlgorithmServiceTest {
         assertEquals(0, result.getTotalProcessed());
         assertEquals(0, result.getApprovedBuget());
         assertEquals(0, result.getWaitingList());
+        assertTrue(result.getFaculties().isEmpty());
         verify(admissionsClient, never()).getFacultySpots(anyInt());
         verify(admissionsClient, never()).updateStatuses(any());
     }
 
     @Test
-    void ranking_totiIncapInLocuri_nimeniWaiting() {
-        when(admissionsClient.getPendingApplications(1))
-                .thenReturn(List.of(
-                        candidat(1L, 10L, 1, 9.5f),
-                        candidat(2L, 20L, 1, 8.0f)
-                ));
-        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 2, 2));
+    void ranking_toiiInWaitingListCandLocuriZero() {
+        when(admissionsClient.getPendingApplications(1)).thenReturn(List.of(
+                candidat(1L, 10L, 1, 8.0f, 8.0f, 8.0f, 8.0f, 1),
+                candidat(2L, 20L, 1, 9.0f, 9.0f, 9.0f, 9.0f, 2)
+        ));
+        when(admissionsClient.getFacultySpots(1)).thenReturn(spots(1, 0, 0));
         doNothing().when(admissionsClient).updateStatuses(any());
 
         AlgorithmResultDto result = algorithmService.runRanking(1);
 
         assertEquals(2, result.getTotalProcessed());
-        assertEquals(2, result.getApprovedBuget());
+        assertEquals(0, result.getApprovedBuget());
         assertEquals(0, result.getApprovedTaxa());
-        assertEquals(0, result.getWaitingList());
+        assertEquals(2, result.getWaitingList());
     }
 }
