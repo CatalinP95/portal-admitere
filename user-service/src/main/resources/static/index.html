@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Service — Portal Admitere</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .logo {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; flex-shrink: 0;
+    }
+    h1 { font-size: 1.75rem; font-weight: 700; color: #f1f5f9; }
+    h1 span { color: #818cf8; }
+    .version-badge {
+      margin-left: auto;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 9999px;
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      white-space: nowrap;
+    }
+
+    /* Status bar */
+    .status-bar {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      flex-shrink: 0;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .status-text { font-size: 0.9rem; color: #94a3b8; }
+    .status-text strong { color: #22c55e; }
+    .status-port {
+      margin-left: auto;
+      font-size: 0.85rem;
+      color: #64748b;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+    }
+
+    /* Section title */
+    .section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 0.75rem;
+      margin-top: 2rem;
+    }
+
+    /* Endpoint cards */
+    .cards { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 0.875rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: border-color 0.15s, background 0.15s;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .card:hover { border-color: #6366f1; background: #1a2540; }
+
+    .method {
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      min-width: 52px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .method.GET    { background: #064e3b; color: #34d399; }
+    .method.POST   { background: #1e3a5f; color: #60a5fa; }
+    .method.PUT    { background: #451a03; color: #fb923c; }
+    .method.DELETE { background: #450a0a; color: #f87171; }
+
+    .path {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      flex: 1;
+    }
+    .path .param { color: #a78bfa; }
+
+    .desc {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-align: right;
+      max-width: 220px;
+    }
+
+    .role-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      flex-shrink: 0;
+    }
+    .role-badge.ADMIN { background: #4c1d95; color: #c4b5fd; border: 1px solid #6d28d9; }
+    .role-badge.AUTH  { background: #1c3557; color: #93c5fd; border: 1px solid #2563eb; }
+    .role-badge.PUBLIC{ background: #14532d; color: #86efac; border: 1px solid #16a34a; }
+
+    /* Quick links */
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .quick-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      text-decoration: none;
+      color: #e2e8f0;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .quick-link:hover { border-color: #6366f1; background: #1a2540; }
+    .quick-link-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .quick-link-label { font-size: 0.85rem; font-weight: 600; }
+    .quick-link-sub { font-size: 0.72rem; color: #64748b; }
+
+    /* Algorithm card */
+    .algo-card {
+      background: linear-gradient(135deg, #1e1b4b 0%, #1e293b 100%);
+      border: 1px solid #4c1d95;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-top: 0.75rem;
+    }
+    .algo-title { font-size: 0.9rem; font-weight: 700; color: #c4b5fd; margin-bottom: 0.5rem; }
+    .algo-formula {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: #a5b4fc;
+      background: #0f0a2e;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      margin: 0.5rem 0;
+    }
+    .algo-desc { font-size: 0.78rem; color: #94a3b8; line-height: 1.5; }
+
+    footer {
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.72rem;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="logo">&#127979;</div>
+      <div>
+        <h1>User <span>Service</span></h1>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:0.15rem;">Portal Admitere — Microserviciu autentificare &amp; management</div>
+      </div>
+      <div class="version-badge">v1.0.0</div>
+    </header>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <div class="status-text"><strong>RUNNING</strong> &mdash; Serviciu activ</div>
+      <div class="status-port">:8081</div>
+    </div>
+
+    <!-- Quick links -->
+    <div class="section-title">Unelte rapide</div>
+    <div class="quick-links">
+      <a class="quick-link" href="/swagger-ui.html">
+        <div class="quick-link-icon">&#128196;</div>
+        <div>
+          <div class="quick-link-label">Swagger UI</div>
+          <div class="quick-link-sub">Testare interactiva API</div>
+        </div>
+      </a>
+      <a class="quick-link" href="/api-docs">
+        <div class="quick-link-icon">&#128209;</div>
+        <div>
+          <div class="quick-link-label">OpenAPI JSON</div>
+          <div class="quick-link-sub">Specificatia completa</div>
+        </div>
+      </a>
+      <a class="quick-link" href="/actuator/health">
+        <div class="quick-link-icon">&#128154;</div>
+        <div>
+          <div class="quick-link-label">Health Check</div>
+          <div class="quick-link-sub">Status componente</div>
+        </div>
+      </a>
+      <a class="quick-link" href="/actuator/prometheus">
+        <div class="quick-link-icon">&#128202;</div>
+        <div>
+          <div class="quick-link-label">Prometheus</div>
+          <div class="quick-link-sub">Metrici aplicatie</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Auth endpoints -->
+    <div class="section-title">Autentificare &nbsp;&mdash;&nbsp; <code style="font-size:0.7rem; color:#475569">/auth</code></div>
+    <div class="cards">
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/auth/register</span>
+        <span class="desc">Creare cont nou (STUDENT)</span>
+        <span class="role-badge PUBLIC">PUBLIC</span>
+      </div>
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/auth/login</span>
+        <span class="desc">Login → JWT + refresh token</span>
+        <span class="role-badge PUBLIC">PUBLIC</span>
+      </div>
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/auth/refresh</span>
+        <span class="desc">Reinnoire access token</span>
+        <span class="role-badge PUBLIC">PUBLIC</span>
+      </div>
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/auth/logout</span>
+        <span class="desc">Revocare refresh token</span>
+        <span class="role-badge PUBLIC">PUBLIC</span>
+      </div>
+    </div>
+
+    <!-- User endpoints -->
+    <div class="section-title">Utilizatori &nbsp;&mdash;&nbsp; <code style="font-size:0.7rem; color:#475569">/api/users</code></div>
+    <div class="cards">
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/users</span>
+        <span class="desc">Lista paginata</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/users/<span class="param">{id}</span></span>
+        <span class="desc">Detalii utilizator</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/api/users</span>
+        <span class="desc">Creare utilizator</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/users/<span class="param">{id}</span></span>
+        <span class="desc">Actualizare utilizator</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/users/<span class="param">{id}</span>/role</span>
+        <span class="desc">Schimbare rol</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method DELETE">DEL</span>
+        <span class="path">/api/users/<span class="param">{id}</span></span>
+        <span class="desc">Dezactivare (soft delete)</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+    </div>
+
+    <!-- Profile endpoints -->
+    <div class="section-title">Profil utilizator &nbsp;&mdash;&nbsp; <code style="font-size:0.7rem; color:#475569">/api/profile</code></div>
+    <div class="cards">
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/profile</span>
+        <span class="desc">Profil propriu</span>
+        <span class="role-badge AUTH">AUTH</span>
+      </div>
+      <div class="card">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/profile</span>
+        <span class="desc">Salvare / actualizare profil</span>
+        <span class="role-badge AUTH">AUTH</span>
+      </div>
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/profile/<span class="param">{userId}</span></span>
+        <span class="desc">Profil dupa ID</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+    </div>
+
+    <!-- Announcements endpoints -->
+    <div class="section-title">Anunturi &nbsp;&mdash;&nbsp; <code style="font-size:0.7rem; color:#475569">/api/announcements</code></div>
+    <div class="cards">
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/announcements<span class="param">?tag=IMPORTANT</span></span>
+        <span class="desc">Lista paginata, filtru tag</span>
+        <span class="role-badge AUTH">AUTH</span>
+      </div>
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/api/announcements</span>
+        <span class="desc">Creare anunt cu tag-uri</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method PUT">PUT</span>
+        <span class="path">/api/announcements/<span class="param">{id}</span></span>
+        <span class="desc">Actualizare anunt</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+      <div class="card">
+        <span class="method DELETE">DEL</span>
+        <span class="path">/api/announcements/<span class="param">{id}</span></span>
+        <span class="desc">Stergere (soft delete)</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+    </div>
+
+    <!-- Menu endpoints -->
+    <div class="section-title">Meniu navigare &nbsp;&mdash;&nbsp; <code style="font-size:0.7rem; color:#475569">/api/menu</code></div>
+    <div class="cards">
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/menu</span>
+        <span class="desc">Elemente meniu dupa rol</span>
+        <span class="role-badge AUTH">AUTH</span>
+      </div>
+      <div class="card">
+        <span class="method GET">GET</span>
+        <span class="path">/api/menu/role</span>
+        <span class="desc">Rolul utilizatorului curent</span>
+        <span class="role-badge AUTH">AUTH</span>
+      </div>
+    </div>
+
+    <!-- Algorithm -->
+    <div class="section-title">Algoritm ranking &nbsp;&mdash;&nbsp; <code style="font-size:0.7rem; color:#475569">/api/algorithm</code></div>
+    <div class="cards">
+      <div class="card">
+        <span class="method POST">POST</span>
+        <span class="path">/api/algorithm/run/<span class="param">{sessionId}</span></span>
+        <span class="desc">Rulare algoritm admitere</span>
+        <span class="role-badge ADMIN">ADMIN</span>
+      </div>
+    </div>
+
+    <div class="algo-card">
+      <div class="algo-title">&#127919; Formula scor compus</div>
+      <div class="algo-formula">scor = 0.6 × medBac + 0.2 × dif1 + 0.1 × dif2 + 0.1 × dif3</div>
+      <div class="algo-desc">
+        Candidatii sunt sortati descrescator dupa scor compus per facultate.
+        Bugetistii (formFunding=1) ocupa intai locurile buget; locurile buget ramase merg la taxisti cu cele mai mari scoruri.
+        Taxistii (formFunding=2) ocupa locurile taxa. Restul → WAITING_LIST.
+        Serviciul comunica cu <strong>admissions-service</strong> prin Feign Client cu CircuitBreaker + Retry (Resilience4j).
+      </div>
+    </div>
+
+    <footer>
+      Portal Admitere &mdash; User Service &mdash; &copy; 2026 &mdash; Prundaru Catalin
+    </footer>
+
+  </div>
+</body>
+</html>

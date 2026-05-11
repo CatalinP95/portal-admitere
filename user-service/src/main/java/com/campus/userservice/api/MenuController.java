@@ -1,9 +1,12 @@
 package com.campus.userservice.api;
 
-import com.campus.userservice.model.Role;
 import com.campus.userservice.model.User;
 import com.campus.userservice.repository.UserRepository;
 import com.campus.userservice.service.MenuService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/menu")
+@Tag(name = "Meniu navigare", description = "Returneaza elementele de meniu dinamice in functie de rolul utilizatorului autentificat")
 public class MenuController {
 
     private final MenuService menuService;
@@ -25,6 +29,11 @@ public class MenuController {
         this.userRepository = userRepository;
     }
 
+    @Operation(summary = "Meniu pentru rolul curent", description = "Returneaza lista de elemente de meniu (label + url) corespunzatoare rolului utilizatorului autentificat")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Meniu returnat cu succes"),
+        @ApiResponse(responseCode = "403", description = "Neautentificat")
+    })
     @GetMapping
     public ResponseEntity<List<Map<String, String>>> getMenu(Authentication authentication) {
         User user = userRepository.findById(Long.parseLong(authentication.getName()))
@@ -32,6 +41,11 @@ public class MenuController {
         return ResponseEntity.ok(menuService.getMenuForRole(user.getRole()));
     }
 
+    @Operation(summary = "Rolul utilizatorului curent", description = "Returneaza rolul utilizatorului autentificat: STUDENT, ADMIN sau SECRETARIAT")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Rol returnat: { \"role\": \"STUDENT\" }"),
+        @ApiResponse(responseCode = "403", description = "Neautentificat")
+    })
     @GetMapping("/role")
     public ResponseEntity<Map<String, String>> getRole(Authentication authentication) {
         User user = userRepository.findById(Long.parseLong(authentication.getName()))
