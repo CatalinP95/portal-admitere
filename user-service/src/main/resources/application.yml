@@ -73,6 +73,24 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+feign:
+  circuitbreaker:
+    enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      admissions-service:
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 2
+  retry:
+    instances:
+      admissions-service:
+        maxAttempts: 3
+        waitDuration: 500ms
+
 logging:
   level:
     com.campus.userservice: INFO
