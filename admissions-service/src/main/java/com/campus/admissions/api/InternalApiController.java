@@ -1,7 +1,7 @@
 package com.campus.admissions.api;
 
+import com.campus.admissions.dto.algorithm.ApplicationRankDto;
 import com.campus.admissions.model.Application;
-import com.campus.admissions.model.ApplicationStatus;
 import com.campus.admissions.model.Faculty;
 import com.campus.admissions.model.Session;
 import com.campus.admissions.service.ApplicationService;
@@ -30,11 +30,14 @@ public class InternalApiController {
         this.facultyService = facultyService;
     }
 
+
     // returneaza toate cererile PENDING dintr-o sesiune (pentru ranking)
     @GetMapping("/applications/pending/{sessionId}")
-    public ResponseEntity<List<Application>> getPendingApplications(@PathVariable Integer sessionId) {
-        Session session = sessionService.findById(sessionId);
-        return ResponseEntity.ok(applicationService.findPendingBySession(session));
+    public ResponseEntity<List<ApplicationRankDto>> getPendingApplications(@PathVariable Integer sessionId) {
+        return ResponseEntity.ok(
+                applicationService.getApplicationsRank(
+                applicationService.findBySessionIdAndStatus(sessionId, "PENDING")
+                ));
     }
 
     // returneaza locurile disponibile per facultate pentru o sesiune

@@ -1,5 +1,6 @@
 package com.campus.admissions.service;
 
+import com.campus.admissions.dto.algorithm.ApplicationRankDto;
 import com.campus.admissions.model.*;
 import com.campus.admissions.repository.ApplicationRepository;
 import jakarta.persistence.EntityManager;
@@ -28,6 +29,9 @@ class ApplicationServiceTest {
 
     @InjectMocks
     private ApplicationService applicationService;
+
+    @Mock
+    private AverageCompetitionService averageCompetitionService;
 
     private Application application;
     private Session session;
@@ -246,5 +250,124 @@ class ApplicationServiceTest {
                 .thenReturn(List.of(application));
 
         assertEquals(1, applicationService.findPendingBySession(session).size());
+    }
+
+    @Test
+    void getApplicationRank_shouldReturnDtosWithAverageCompetitionData() {
+        Faculty faculty = Faculty.builder()
+                .id(10)
+                .build();
+
+        Application application = Application.builder()
+                .id(1)
+                .userId(100L)
+                .faculty(faculty)
+                .formFunding(1)
+                .build();
+
+        AverageCompetition averageCompetition = AverageCompetition.builder()
+                .averageBac(9.75f)
+                .markDif1(9.50f)
+                .markDif2(9.80f)
+                .markDif3(10.0f)
+                .build();
+
+        when(averageCompetitionService.getByUserId(100L))
+                .thenReturn(Optional.of(averageCompetition));
+
+        List<ApplicationRankDto> result =
+                applicationService.getApplicationsRank(List.of(application));
+
+        assertEquals(1, result.size());
+
+        ApplicationRankDto dto = result.getFirst();
+
+        assertEquals(1L, dto.getApplicationId());
+        assertEquals(100L, dto.getUserId());
+        assertEquals(10, dto.getFacultyId());
+        assertEquals(1, dto.getFormFunding());
+
+        assertEquals(9.75f, dto.getAverageBac());
+        assertEquals(9.50f, dto.getMarkDif1());
+        assertEquals(9.80f, dto.getMarkDif2());
+        assertEquals(10.0f, dto.getMarkDif3());
+
+        verify(averageCompetitionService).getByUserId(100L);
+    }
+
+    @Test
+    void getApplicationRank_shouldReturnDtosWithoutAverageCompetitionData() {
+        Faculty faculty = Faculty.builder()
+                .id(20)
+                .build();
+
+        Application application = Application.builder()
+                .id(2)
+                .userId(200L)
+                .faculty(faculty)
+                .formFunding(2)
+                .build();
+
+        when(averageCompetitionService.getByUserId(200L))
+                .thenReturn(Optional.empty());
+
+        List<ApplicationRankDto> result =
+                applicationService.getApplicationsRank(List.of(application));
+
+        assertEquals(1, result.size());
+
+        ApplicationRankDto dto = result.getFirst();
+
+        assertEquals(2L, dto.getApplicationId());
+        assertEquals(200L, dto.getUserId());
+        assertEquals(20, dto.getFacultyId());
+        assertEquals(2, dto.getFormFunding());
+
+        assertNull(dto.getAverageBac());
+        assertNull(dto.getMarkDif1());
+        assertNull(dto.getMarkDif2());
+        assertNull(dto.getMarkDif3());
+
+        verify(averageCompetitionService).getByUserId(200L);
+    }
+
+    @Test
+    void findBySessionIdAndStatus_shouldReturnApplications() {
+        Integer sessionId = 1;
+        String status = "APPROVED";
+
+        List<Application> expectedApplications = List.of(
+                Application.builder().id(1).build(),
+                Application.builder().id(2).build()
+        );
+
+        when(applicationRepository.findBySessionIdAndStatus(sessionId, status))
+                .thenReturn(expectedApplications);
+
+        List<Application> result =
+                applicationService.findBySessionIdAndStatus(sessionId, status);
+
+        assertEquals(2, result.size());
+        assertEquals(expectedApplications, result);
+
+        verify(applicationRepository)
+                .findBySessionIdAndStatus(sessionId, status);
+    }
+
+    @Test
+    void findBySessionIdAndStatus_shouldReturnEmptyList() {
+        Integer sessionId = 99;
+        String status = "INVALID";
+
+        when(applicationRepository.findBySessionIdAndStatus(sessionId, status))
+                .thenReturn(Collections.emptyList());
+
+        List<Application> result =
+                applicationService.findBySessionIdAndStatus(sessionId, status);
+
+        assertTrue(result.isEmpty());
+
+        verify(applicationRepository)
+                .findBySessionIdAndStatus(sessionId, status);
     }
 }

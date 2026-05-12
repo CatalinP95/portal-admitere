@@ -5,6 +5,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import org.hibernate.validator.constraints.Range;
 
@@ -13,6 +15,8 @@ import java.util.Date;
 
 @Entity(name = "averagecompetition")
 @Data
+@AllArgsConstructor
+@Builder
 public class AverageCompetition implements Serializable {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
