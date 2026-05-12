@@ -28,6 +28,10 @@ public class Announcement {
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_user_id")
+    private User createdByUser;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -66,4 +70,7 @@ public class Announcement {
 
     public Set<Tag> getTags() { return tags; }
     public void setTags(Set<Tag> tags) { this.tags = tags; }
+
+    public User getCreatedByUser() { return createdByUser; }
+    public void setCreatedByUser(User createdByUser) { this.createdByUser = createdByUser; }
 }

@@ -35,6 +35,10 @@ public class JwtUtil {
         return buildToken(userId, role, refreshExpiration);
     }
 
+    public String generateTokenWithExpiry(String userId, String role, long customExpiryMs) {
+        return buildToken(userId, role, customExpiryMs);
+    }
+
     private String buildToken(String subject, String role, long ttl) {
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())

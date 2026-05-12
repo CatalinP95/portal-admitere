@@ -8,6 +8,8 @@ import com.campus.userservice.repository.UserProfileRepository;
 import com.campus.userservice.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,6 +24,10 @@ public class UserProfileService {
                                UserRepository userRepository) {
         this.userProfileRepository = userProfileRepository;
         this.userRepository = userRepository;
+    }
+
+    public Page<UserProfileDto> getAll(Pageable pageable) {
+        return userProfileRepository.findAll(pageable).map(UserProfileDto::from);
     }
 
     public UserProfileDto getByUserId(Long userId) {
