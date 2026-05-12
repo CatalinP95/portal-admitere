@@ -2,6 +2,7 @@ package com.campus.userservice.service;
 
 import com.campus.userservice.dto.RegisterRequest;
 import com.campus.userservice.dto.UserDto;
+import com.campus.userservice.exception.UserNotFoundException;
 import com.campus.userservice.model.Role;
 import com.campus.userservice.model.User;
 import com.campus.userservice.repository.UserRepository;
@@ -63,7 +64,7 @@ class UserServiceTest {
     void findById_notFound_throws() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> userService.findById(99L));
+        assertThrows(UserNotFoundException.class, () -> userService.findById(99L));
     }
 
     @Test

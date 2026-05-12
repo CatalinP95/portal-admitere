@@ -31,8 +31,14 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
 
+    @Value("${jwt.expiration:86400000}")
+    private long accessExpirationMs;
+
     @Value("${jwt.refresh-expiration:604800000}")
     private long refreshExpirationMs;
+
+    private static final long REMEMBER_ME_ACCESS_MS  = 7L  * 24 * 3600 * 1000;
+    private static final long REMEMBER_ME_REFRESH_MS = 30L * 24 * 3600 * 1000;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
@@ -82,14 +88,17 @@ public class AuthService {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        log.info("User logged in: {}", user.getUsername());
+        log.info("User logged in: {} (rememberMe={})", user.getUsername(), request.isRememberMe());
 
         refreshTokenRepository.revokeAllByUser(user);
 
-        String accessToken = jwtUtil.generateToken(String.valueOf(user.getId()), user.getRole().name());
-        String rawRefreshToken = jwtUtil.generateRefreshToken(String.valueOf(user.getId()), user.getRole().name());
+        long accessExpiry  = request.isRememberMe() ? REMEMBER_ME_ACCESS_MS  : accessExpirationMs;
+        long refreshExpiry = request.isRememberMe() ? REMEMBER_ME_REFRESH_MS : refreshExpirationMs;
 
-        saveRefreshToken(user, rawRefreshToken);
+        String accessToken = jwtUtil.generateTokenWithExpiry(String.valueOf(user.getId()), user.getRole().name(), accessExpiry);
+        String rawRefreshToken = jwtUtil.generateTokenWithExpiry(String.valueOf(user.getId()), user.getRole().name(), refreshExpiry);
+
+        saveRefreshToken(user, rawRefreshToken, refreshExpiry);
 
         return new AuthResponse(accessToken, rawRefreshToken, user.getRole().name(), user.getId());
     }
@@ -130,10 +139,14 @@ public class AuthService {
     }
 
     private void saveRefreshToken(User user, String rawToken) {
+        saveRefreshToken(user, rawToken, refreshExpirationMs);
+    }
+
+    private void saveRefreshToken(User user, String rawToken, long expiryMs) {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(rawToken);
         refreshToken.setUser(user);
-        refreshToken.setExpiryDate(LocalDateTime.now().plusSeconds(refreshExpirationMs / 1000));
+        refreshToken.setExpiryDate(LocalDateTime.now().plusSeconds(expiryMs / 1000));
         refreshTokenRepository.save(refreshToken);
     }
 }

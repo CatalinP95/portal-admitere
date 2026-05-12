@@ -42,8 +42,14 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private UserProfile userProfile;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RefreshToken> refreshTokens = new ArrayList<>();
+
+    @OneToMany(mappedBy = "createdByUser", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Announcement> announcements = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
@@ -114,4 +120,7 @@ public class User {
 
     public List<RefreshToken> getRefreshTokens() { return refreshTokens; }
     public void setRefreshTokens(List<RefreshToken> refreshTokens) { this.refreshTokens = refreshTokens; }
+
+    public List<Announcement> getAnnouncements() { return announcements; }
+    public void setAnnouncements(List<Announcement> announcements) { this.announcements = announcements; }
 }

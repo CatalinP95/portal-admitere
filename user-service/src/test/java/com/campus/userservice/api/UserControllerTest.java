@@ -3,6 +3,8 @@ package com.campus.userservice.api;
 import com.campus.userservice.dto.RegisterRequest;
 import com.campus.userservice.model.Role;
 import com.campus.userservice.model.User;
+import com.campus.userservice.repository.RefreshTokenRepository;
+import com.campus.userservice.repository.UserProfileRepository;
 import com.campus.userservice.repository.UserRepository;
 import com.campus.userservice.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,6 +29,8 @@ class UserControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private UserRepository userRepository;
+    @Autowired private UserProfileRepository userProfileRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
 
@@ -36,6 +40,8 @@ class UserControllerTest {
 
     @BeforeEach
     void setUp() {
+        userProfileRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
 
         User admin = new User();
