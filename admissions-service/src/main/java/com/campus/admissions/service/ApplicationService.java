@@ -1,7 +1,11 @@
 package com.campus.admissions.service;
 
+import com.campus.admissions.dto.algorithm.ApplicationRankDto;
+import com.campus.admissions.dto.algorithm.ApplicationStatusUpdate;
+import com.campus.admissions.dto.algorithm.BulkStatusRequest;
 import com.campus.admissions.model.*;
 import com.campus.admissions.repository.ApplicationRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -17,16 +21,20 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @Service
 public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
+    private final AverageCompetitionService averageCompetitionService;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    public ApplicationService(ApplicationRepository applicationRepository) {
+    public ApplicationService(ApplicationRepository applicationRepository,
+                              AverageCompetitionService averageCompetitionService) {
         this.applicationRepository = applicationRepository;
+        this.averageCompetitionService = averageCompetitionService;
     }
 
     public Page<Application> findAll(Pageable pageable) {
@@ -39,6 +47,30 @@ public class ApplicationService {
 
     public List<Application> findByUserId(Long userId) {
         return applicationRepository.findByUserId(userId);
+    }
+
+    public List<ApplicationRankDto> getApplicationsRank(List<Application> applicationList) {
+        return applicationList.stream().map(app -> {
+            ApplicationRankDto dto = ApplicationRankDto.builder()
+                    .applicationId(app.getId().longValue())
+                    .userId(app.getUserId())
+                    .facultyId(app.getFaculty().getId())
+                    .formFunding(app.getFormFunding())
+                    .build();
+
+            averageCompetitionService.getByUserId(app.getUserId())
+                    .ifPresent(avg -> {
+                        dto.setAverageBac(avg.getAverageBac());
+                        dto.setMarkDif1(avg.getMarkDif1());
+                        dto.setMarkDif2(avg.getMarkDif2());
+                        dto.setMarkDif3(avg.getMarkDif3());
+                    });
+            return dto;
+        }).toList();
+    }
+
+    public List<Application> findBySessionIdAndStatus(Integer sessionId, String status) {
+        return applicationRepository.findBySessionIdAndStatus(sessionId, status);
     }
 
     public List<Application> findBySessionAndStatus(Session session, String status) {
@@ -62,7 +94,7 @@ public class ApplicationService {
                 application.getSession().getId(),
                 1);
 
-        if(exists) {
+        if (exists) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Utilizatorul are deja o aplicatie pentru sesiunea curenta");
@@ -157,8 +189,14 @@ public class ApplicationService {
     }
 
     @Transactional
-    public void bulkUpdateStatus(List<Application> applications) {
-        applications.forEach(applicationRepository::save);
+    public void bulkUpdateStatus(BulkStatusRequest bulkStatusRequest) {
+        for (ApplicationStatusUpdate statusUpdate : bulkStatusRequest.getUpdates()) {
+            Application application =
+                    applicationRepository.getReferenceById(statusUpdate.getApplicationId().intValue());
+            log.info("Updating status of applicationId={} with applicationStatus={}",
+                    application.getId(), statusUpdate.getStatus().toString());
+            application.setStatus(statusUpdate.getStatus().toString());
+        }
     }
 
     public void delete(Application application) {
@@ -168,12 +206,12 @@ public class ApplicationService {
     @SuppressWarnings("unchecked")
     public List<Object[]> countPerFaculty() {
         return entityManager.createNativeQuery(
-            "select count(a.id) as total, p.name as profile, u.name as university " +
-            "from profile p " +
-            "inner join university u on p.university_id = u.id " +
-            "left join addmissionapplic a on a.profile_id = p.id and a.status = 'CONFIRMED' " +
-            "GROUP BY p.name ORDER BY u.name, p.name, total")
-            .getResultList();
+                        "select count(a.id) as total, p.name as profile, u.name as university " +
+                                "from profile p " +
+                                "inner join university u on p.university_id = u.id " +
+                                "left join addmissionapplic a on a.profile_id = p.id and a.status = 'CONFIRMED' " +
+                                "GROUP BY p.name ORDER BY u.name, p.name, total")
+                .getResultList();
     }
 
     private Date calcDeadline(Session session) {
