@@ -2,6 +2,7 @@ package com.campus.userservice.service;
 
 import com.campus.userservice.dto.AnnouncementDto;
 import com.campus.userservice.dto.AnnouncementRequest;
+import com.campus.userservice.exception.AnnouncementNotFoundException;
 import com.campus.userservice.model.Announcement;
 import com.campus.userservice.model.Tag;
 import com.campus.userservice.repository.AnnouncementRepository;
@@ -58,7 +59,7 @@ public class AnnouncementService {
     @Transactional
     public AnnouncementDto update(Long id, AnnouncementRequest request) {
         Announcement announcement = announcementRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Announcement not found: " + id));
+                .orElseThrow(() -> new AnnouncementNotFoundException(id));
 
         announcement.setTitle(request.getTitle());
         announcement.setContent(request.getContent());
@@ -71,7 +72,7 @@ public class AnnouncementService {
     @Transactional
     public void delete(Long id) {
         Announcement announcement = announcementRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Announcement not found: " + id));
+                .orElseThrow(() -> new AnnouncementNotFoundException(id));
         announcement.setEnabled(false);
         announcementRepository.save(announcement);
         log.info("Soft-deleted announcement {}", id);

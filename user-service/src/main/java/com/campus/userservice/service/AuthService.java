@@ -92,11 +92,19 @@ public class AuthService {
 
         refreshTokenRepository.revokeAllByUser(user);
 
-        long accessExpiry  = request.isRememberMe() ? REMEMBER_ME_ACCESS_MS  : accessExpirationMs;
-        long refreshExpiry = request.isRememberMe() ? REMEMBER_ME_REFRESH_MS : refreshExpirationMs;
+        String accessToken;
+        String rawRefreshToken;
+        long refreshExpiry;
 
-        String accessToken = jwtUtil.generateTokenWithExpiry(String.valueOf(user.getId()), user.getRole().name(), accessExpiry);
-        String rawRefreshToken = jwtUtil.generateTokenWithExpiry(String.valueOf(user.getId()), user.getRole().name(), refreshExpiry);
+        if (request.isRememberMe()) {
+            accessToken    = jwtUtil.generateTokenWithExpiry(String.valueOf(user.getId()), user.getRole().name(), REMEMBER_ME_ACCESS_MS);
+            rawRefreshToken = jwtUtil.generateTokenWithExpiry(String.valueOf(user.getId()), user.getRole().name(), REMEMBER_ME_REFRESH_MS);
+            refreshExpiry  = REMEMBER_ME_REFRESH_MS;
+        } else {
+            accessToken    = jwtUtil.generateToken(String.valueOf(user.getId()), user.getRole().name());
+            rawRefreshToken = jwtUtil.generateRefreshToken(String.valueOf(user.getId()), user.getRole().name());
+            refreshExpiry  = refreshExpirationMs;
+        }
 
         saveRefreshToken(user, rawRefreshToken, refreshExpiry);
 
