@@ -11,6 +11,9 @@ import java.util.List;
 public interface FacultyRepository extends JpaRepository<Faculty, Integer> {
 
     Faculty findFacultyById(Integer id);
+
+
+
     Page<Faculty> findAll(Pageable pageable);
     List<Faculty> findByUniversity(University university);
 }

@@ -1,8 +1,11 @@
 package com.campus.admissions.service;
 
 import com.campus.admissions.dto.algorithm.ApplicationRankDto;
+import com.campus.admissions.dto.algorithm.ApplicationStatusUpdate;
+import com.campus.admissions.dto.algorithm.BulkStatusRequest;
 import com.campus.admissions.model.*;
 import com.campus.admissions.repository.ApplicationRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,6 +21,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @Service
 public class ApplicationService {
 
@@ -185,8 +189,14 @@ public class ApplicationService {
     }
 
     @Transactional
-    public void bulkUpdateStatus(List<Application> applications) {
-        applications.forEach(applicationRepository::save);
+    public void bulkUpdateStatus(BulkStatusRequest bulkStatusRequest) {
+        for (ApplicationStatusUpdate statusUpdate : bulkStatusRequest.getUpdates()) {
+            Application application =
+                    applicationRepository.getReferenceById(statusUpdate.getApplicationId().intValue());
+            log.info("Updating status of applicationId={} with applicationStatus={}",
+                    application.getId(), statusUpdate.getStatus().toString());
+            application.setStatus(statusUpdate.getStatus().toString());
+        }
     }
 
     public void delete(Application application) {
