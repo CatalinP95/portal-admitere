@@ -14,7 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.campus.userservice.service.AuditLogService;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -39,6 +41,7 @@ class AnnouncementControllerTest {
     @Autowired private TagRepository tagRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
+    @MockBean private AuditLogService auditLogService;
 
     private String adminToken;
     private String studentToken;

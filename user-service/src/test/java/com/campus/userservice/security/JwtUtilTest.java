@@ -1,22 +1,22 @@
 package com.campus.userservice.security;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringJUnitConfig(classes = JwtUtil.class)
-@TestPropertySource(properties = {
-        "jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970",
-        "jwt.expiration=86400000",
-        "jwt.refresh-expiration=604800000"
-})
 class JwtUtilTest {
 
-    @Autowired
     private JwtUtil jwtUtil;
+
+    @BeforeEach
+    void setUp() {
+        jwtUtil = new JwtUtil();
+        ReflectionTestUtils.setField(jwtUtil, "secret", "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970");
+        ReflectionTestUtils.setField(jwtUtil, "expiration", 86400000L);
+        ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800000L);
+    }
 
     @Test
     void generateToken_isValid() {

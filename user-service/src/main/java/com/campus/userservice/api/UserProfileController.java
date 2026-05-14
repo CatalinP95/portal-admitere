@@ -2,6 +2,8 @@ package com.campus.userservice.api;
 
 import com.campus.userservice.dto.UserProfileDto;
 import com.campus.userservice.dto.UserProfileRequest;
+import com.campus.userservice.model.AuditLog;
+import com.campus.userservice.service.AuditLogService;
 import com.campus.userservice.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,15 +19,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/profile")
 @Tag(name = "Profil utilizator", description = "Gestionare date personale — firstName, lastName, CNP, telefon")
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
+    private final AuditLogService auditLogService;
 
-    public UserProfileController(UserProfileService userProfileService) {
+    public UserProfileController(UserProfileService userProfileService,
+                                  AuditLogService auditLogService) {
         this.userProfileService = userProfileService;
+        this.auditLogService = auditLogService;
     }
 
     @Operation(summary = "Profil propriu", description = "Returneaza profilul utilizatorului autentificat")
@@ -78,5 +86,33 @@ public class UserProfileController {
     public ResponseEntity<UserProfileDto> getProfileById(
             @Parameter(description = "ID-ul utilizatorului") @PathVariable Long userId) {
         return ResponseEntity.ok(userProfileService.getByUserId(userId));
+    }
+
+    @Operation(summary = "Audit logs utilizator", description = "Returneaza istoricul de actiuni din MongoDB — doar ADMIN")
+    @GetMapping("/{userId}/audit")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<AuditLog>> getAuditLogs(@PathVariable Long userId) {
+        return ResponseEntity.ok(auditLogService.getLogsForUser(userId));
+    }
+
+    @Operation(summary = "Performance demo: DB vs Cache", description = "Compara timpul de raspuns MySQL vs Redis cache")
+    @GetMapping("/{userId}/perf")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> perfDemo(@PathVariable Long userId) {
+        long t1 = System.currentTimeMillis();
+        userProfileService.getByUserId(userId);
+        long cached = System.currentTimeMillis() - t1;
+
+        userProfileService.evictCache(userId);
+
+        long t2 = System.currentTimeMillis();
+        userProfileService.getByUserId(userId);
+        long fromDb = System.currentTimeMillis() - t2;
+
+        return ResponseEntity.ok(Map.of(
+                "cache_ms", cached,
+                "db_ms", fromDb,
+                "speedup", fromDb > 0 ? (double) fromDb / cached : "N/A"
+        ));
     }
 }

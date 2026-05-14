@@ -1,6 +1,7 @@
 package com.campus.userservice.api;
 
 import com.campus.userservice.client.AdmissionsClient;
+import com.campus.userservice.service.AuditLogService;
 import com.campus.userservice.dto.algorithm.ApplicationRankDto;
 import com.campus.userservice.dto.algorithm.FacultySpotsDto;
 import com.campus.userservice.model.Role;
@@ -41,6 +42,7 @@ class AlgorithmControllerTest {
     @Autowired private PasswordEncoder passwordEncoder;
 
     @MockBean private AdmissionsClient admissionsClient;
+    @MockBean private AuditLogService auditLogService;
 
     private String adminToken;
     private String studentToken;

@@ -23,8 +23,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,7 +93,8 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(null);
         when(userRepository.findByUsername("ion")).thenReturn(Optional.of(user));
-        when(jwtUtil.generateTokenWithExpiry(eq("1"), eq("STUDENT"), anyLong())).thenReturn("access", "refresh");
+        when(jwtUtil.generateToken("1", "STUDENT")).thenReturn("access");
+        when(jwtUtil.generateRefreshToken("1", "STUDENT")).thenReturn("refresh");
         doNothing().when(refreshTokenRepository).revokeAllByUser(any());
         when(refreshTokenRepository.save(any())).thenReturn(new RefreshToken());
 

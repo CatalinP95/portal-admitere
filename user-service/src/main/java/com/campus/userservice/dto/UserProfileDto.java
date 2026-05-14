@@ -1,9 +1,12 @@
 package com.campus.userservice.dto;
 
 import com.campus.userservice.model.UserProfile;
+import java.io.Serializable;
 import java.time.LocalDate;
 
-public class UserProfileDto {
+public class UserProfileDto implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private Long id;
     private Long userId;
