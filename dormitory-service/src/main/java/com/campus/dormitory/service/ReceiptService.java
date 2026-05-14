@@ -1,12 +1,14 @@
 package com.campus.dormitory.service;
 
+import com.campus.dormitory.config.RabbitConfig;
 import com.campus.dormitory.exception.BadRequestException;
 import com.campus.dormitory.exception.ResourceNotFoundException;
+import com.campus.dormitory.messaging.DormitoryEvent;
+import com.campus.dormitory.messaging.EventPublisher;
 import com.campus.dormitory.model.PaymentStatus;
 import com.campus.dormitory.model.Receipt;
 import com.campus.dormitory.repository.jpa.ReceiptRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,18 +19,23 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @Service
 public class ReceiptService {
 
-    private static final Logger log = LoggerFactory.getLogger(ReceiptService.class);
-
     private final ReceiptRepository receiptRepository;
+    private final AuditLogService auditLogService;
+    private final EventPublisher eventPublisher;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    public ReceiptService(ReceiptRepository receiptRepository) {
+    public ReceiptService(ReceiptRepository receiptRepository,
+                          AuditLogService auditLogService,
+                          EventPublisher eventPublisher) {
         this.receiptRepository = receiptRepository;
+        this.auditLogService = auditLogService;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<Receipt> findAll() {
@@ -61,6 +68,11 @@ public class ReceiptService {
         receipt.setDataTranzactie(new Date());
         Receipt saved = receiptRepository.save(receipt);
         log.info("Receipt {} paid by user {}", receiptId, userId);
+        auditLogService.log(userId, "PAY", "Receipt", String.valueOf(receiptId),
+                "Receipt paid, amount " + saved.getAmount());
+        eventPublisher.publish(RabbitConfig.RK_RECEIPT_PAID,
+                new DormitoryEvent("RECEIPT_PAID", userId, receiptId,
+                        "Amount " + saved.getAmount()));
         return saved;
     }
 

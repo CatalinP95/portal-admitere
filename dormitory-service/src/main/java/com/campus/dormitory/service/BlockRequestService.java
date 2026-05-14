@@ -1,11 +1,15 @@
 package com.campus.dormitory.service;
 
+import com.campus.dormitory.client.UserClientService;
+import com.campus.dormitory.client.UserDto;
+import com.campus.dormitory.config.RabbitConfig;
 import com.campus.dormitory.exception.BadRequestException;
 import com.campus.dormitory.exception.ResourceNotFoundException;
+import com.campus.dormitory.messaging.DormitoryEvent;
+import com.campus.dormitory.messaging.EventPublisher;
 import com.campus.dormitory.model.*;
 import com.campus.dormitory.repository.jpa.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,10 +20,9 @@ import javax.persistence.PersistenceContext;
 import java.util.Date;
 import java.util.List;
 
+@Slf4j
 @Service
 public class BlockRequestService {
-
-    private static final Logger log = LoggerFactory.getLogger(BlockRequestService.class);
 
     private final BlockRequestRepository blockRequestRepository;
     private final BedRepository bedRepository;
@@ -27,6 +30,9 @@ public class BlockRequestService {
     private final RentalAgreementRepository rentalAgreementRepository;
     private final BlockRepository blockRepository;
     private final PriceRepository priceRepository;
+    private final AuditLogService auditLogService;
+    private final UserClientService userClientService;
+    private final EventPublisher eventPublisher;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -36,13 +42,19 @@ public class BlockRequestService {
                                RoomRepository roomRepository,
                                RentalAgreementRepository rentalAgreementRepository,
                                BlockRepository blockRepository,
-                               PriceRepository priceRepository) {
+                               PriceRepository priceRepository,
+                               AuditLogService auditLogService,
+                               UserClientService userClientService,
+                               EventPublisher eventPublisher) {
         this.blockRequestRepository = blockRequestRepository;
         this.bedRepository = bedRepository;
         this.roomRepository = roomRepository;
         this.rentalAgreementRepository = rentalAgreementRepository;
         this.blockRepository = blockRepository;
         this.priceRepository = priceRepository;
+        this.auditLogService = auditLogService;
+        this.userClientService = userClientService;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<BlockRequest> findAll() {
@@ -72,6 +84,10 @@ public class BlockRequestService {
         Block block = blockRepository.findById(blockId)
                 .orElseThrow(() -> new ResourceNotFoundException("Block", blockId));
 
+        UserDto user = userClientService.getUser(userId).orElse(null);
+        String userInfo = user != null ? user.getUsername() + " (" + user.getEmail() + ")"
+                                       : "id=" + userId + " (user-service unavailable)";
+
         Date now = new Date();
         BlockRequest req = new BlockRequest();
         req.setBlock(block);
@@ -83,7 +99,12 @@ public class BlockRequestService {
         req.setCreatedBy(userId);
         req.setCreatedAt(now);
         BlockRequest saved = blockRequestRepository.save(req);
-        log.info("Block request {} submitted by user {}", saved.getId(), userId);
+        log.info("Block request {} submitted by {}", saved.getId(), userInfo);
+        auditLogService.log(userId, "SUBMIT", "BlockRequest", String.valueOf(saved.getId()),
+                "Block " + blockId + " requested by " + userInfo);
+        eventPublisher.publish(RabbitConfig.RK_REQUEST_SUBMITTED,
+                new DormitoryEvent("BLOCK_REQUEST_SUBMITTED", userId, saved.getId(),
+                        "Block " + blockId + " requested by " + userInfo));
         return saved;
     }
 
@@ -132,6 +153,11 @@ public class BlockRequestService {
 
         log.info("Block request {} approved by admin {}, rental agreement {} created",
                 blockRequestId, adminId, savedRa.getId());
+        auditLogService.log(adminId, "APPROVE", "BlockRequest", String.valueOf(blockRequestId),
+                "Approved request, assigned bed " + bedId + ", created rental agreement " + savedRa.getId());
+        eventPublisher.publish(RabbitConfig.RK_REQUEST_APPROVED,
+                new DormitoryEvent("BLOCK_REQUEST_APPROVED", req.getUserId(), blockRequestId,
+                        "Bed " + bedId + " assigned, agreement " + savedRa.getId()));
         return savedRa;
     }
 
@@ -147,6 +173,11 @@ public class BlockRequestService {
         req.setModifiedAt(new Date());
         BlockRequest saved = blockRequestRepository.save(req);
         log.info("Block request {} rejected by admin {}: {}", blockRequestId, adminId, reason);
+        auditLogService.log(adminId, "REJECT", "BlockRequest", String.valueOf(blockRequestId),
+                "Rejected request: " + reason);
+        eventPublisher.publish(RabbitConfig.RK_REQUEST_REJECTED,
+                new DormitoryEvent("BLOCK_REQUEST_REJECTED", saved.getUserId(), blockRequestId,
+                        "Reason: " + reason));
         return saved;
     }
 
