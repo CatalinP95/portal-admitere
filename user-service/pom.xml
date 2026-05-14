@@ -138,6 +138,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- AOP pentru ServiceLoggingAspect -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- OpenAPI / Swagger (springdoc 2.x pentru Boot 3.x) -->
         <dependency>
             <groupId>org.springdoc</groupId>

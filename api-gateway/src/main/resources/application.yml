@@ -6,19 +6,36 @@ spring:
     import: "optional:configserver:*"
   application:
     name: api-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      connect-timeout: 2000ms
   cloud:
     gateway:
       routes:
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/auth/**, /api/users/**, /api/profile/**, /api/menu/**, /api/announcements/**, /api/algorithm/**
-          filters:
-            - name: JwtGatewayFilter
         - id: user-service-public
           uri: lb://user-service
           predicates:
             - Path=/auth/login, /auth/register, /auth/refresh
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/auth/logout, /api/users/**, /api/profile/**, /api/menu/**, /api/announcements/**, /api/algorithm/**, /api/health/**
+          filters:
+            - name: JwtGatewayFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 5
+                key-resolver: "#{@userKeyResolver}"
         - id: admissions-service
           uri: lb://admissions-service
           predicates:
