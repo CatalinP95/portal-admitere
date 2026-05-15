@@ -1,0 +1,147 @@
+<div class="page">
+
+  <!-- Panou stâng decorativ -->
+  <div class="panel-left">
+    <div class="panel-content">
+      <div class="logo-ring">
+        <span>PA</span>
+      </div>
+      <h1>Portal Admitere</h1>
+      <p>Gestionează procesul de admitere<br>rapid și eficient</p>
+      <ul class="features">
+        <li><span class="dot"></span> Depune dosarul online</li>
+        <li><span class="dot"></span> Urmărește statusul admiterii</li>
+        <li><span class="dot"></span> Gestionează cazarea</li>
+      </ul>
+    </div>
+
+    <!-- Carduri flotante animate -->
+    <div class="fcard fcard-1">
+      <div class="fcard-icon success">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="fcard-body">
+        <div class="fcard-title">Dosar depus</div>
+        <div class="fcard-sub">Acum câteva secunde</div>
+      </div>
+      <div class="fcard-pulse"></div>
+    </div>
+
+    <div class="fcard fcard-2">
+      <div class="fcard-icon pending">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="fcard-body">
+        <div class="fcard-title">În procesare</div>
+        <div class="fcard-progress">
+          <div class="fcard-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fcard fcard-3">
+      <div class="fcard-icon info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </div>
+      <div class="fcard-body">
+        <div class="fcard-title">Rezultat disponibil</div>
+        <div class="fcard-sub">Verifică acum →</div>
+      </div>
+    </div>
+
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <!-- Panou drept cu formular -->
+  <div class="panel-right">
+    <div class="form-card">
+      <h2>Bun venit!</h2>
+      <p class="subtitle">Autentifică-te pentru a continua</p>
+
+      <form [formGroup]="form" (ngSubmit)="submit()">
+
+        <div class="field" [class.focused]="userFocused" [class.filled]="username.value">
+          <label for="username">Utilizator</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <input
+              id="username"
+              type="text"
+              formControlName="username"
+              autocomplete="username"
+              (focus)="userFocused=true"
+              (blur)="userFocused=false"
+              [class.is-invalid]="username.invalid && username.touched"
+            />
+          </div>
+          <div class="error" *ngIf="username.invalid && username.touched">
+            <span *ngIf="username.errors?.['required']">Câmp obligatoriu.</span>
+            <span *ngIf="username.errors?.['minlength']">Minimum 3 caractere.</span>
+          </div>
+        </div>
+
+        <div class="field" [class.focused]="passFocused" [class.filled]="password.value">
+          <label for="password">Parolă</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <input
+              id="password"
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              (focus)="passFocused=true"
+              (blur)="passFocused=false"
+              [class.is-invalid]="password.invalid && password.touched"
+            />
+          </div>
+          <div class="error" *ngIf="password.invalid && password.touched">
+            <span *ngIf="password.errors?.['required']">Câmp obligatoriu.</span>
+            <span *ngIf="password.errors?.['minlength']">Minimum 6 caractere.</span>
+          </div>
+        </div>
+
+        <div class="row-between">
+          <label class="remember">
+            <input type="checkbox" formControlName="rememberMe" />
+            <span class="checkmark"></span>
+            Ține-mă minte
+          </label>
+        </div>
+
+        <div class="alert-error" *ngIf="errorMessage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {{ errorMessage }}
+        </div>
+
+        <button type="submit" class="btn-submit" [class.loading]="loading" [disabled]="loading">
+          <span class="btn-text">{{ loading ? 'Se autentifică...' : 'Autentificare' }}</span>
+          <span class="btn-arrow" *ngIf="!loading">→</span>
+          <span class="spinner" *ngIf="loading"></span>
+        </button>
+
+        <p class="link-row">
+          Nu ai cont? <a routerLink="/register">Înregistrează-te</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+</div>

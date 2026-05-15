@@ -76,7 +76,7 @@ public class AuthService {
 
         saveRefreshToken(saved, rawRefreshToken);
 
-        return new AuthResponse(accessToken, rawRefreshToken, saved.getRole().name(), saved.getId());
+        return new AuthResponse(accessToken, rawRefreshToken, saved.getUsername(), saved.getRole().name(), saved.getId());
     }
 
     @Transactional
@@ -108,7 +108,7 @@ public class AuthService {
 
         saveRefreshToken(user, rawRefreshToken, refreshExpiry);
 
-        return new AuthResponse(accessToken, rawRefreshToken, user.getRole().name(), user.getId());
+        return new AuthResponse(accessToken, rawRefreshToken, user.getUsername(), user.getRole().name(), user.getId());
     }
 
     @Transactional
@@ -134,7 +134,7 @@ public class AuthService {
 
         saveRefreshToken(user, newRawRefreshToken);
 
-        return new AuthResponse(newAccessToken, newRawRefreshToken, user.getRole().name(), user.getId());
+        return new AuthResponse(newAccessToken, newRawRefreshToken, user.getUsername(), user.getRole().name(), user.getId());
     }
 
     @Transactional
