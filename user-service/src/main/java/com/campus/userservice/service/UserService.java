@@ -30,6 +30,12 @@ public class UserService {
         return userRepository.findAll(pageable).map(UserDto::from);
     }
 
+    public Page<UserDto> findFiltered(String search, String roleStr, Pageable pageable) {
+        String searchParam = (search == null || search.isBlank()) ? null : search;
+        Role roleParam = (roleStr == null || roleStr.isBlank()) ? null : Role.valueOf(roleStr.toUpperCase());
+        return userRepository.findWithFilters(searchParam, roleParam, pageable).map(UserDto::from);
+    }
+
     public UserDto findById(Long id) {
         return userRepository.findById(id)
                 .map(UserDto::from)

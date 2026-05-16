@@ -37,11 +37,10 @@ public class AnnouncementController {
     public ResponseEntity<Page<AnnouncementDto>> getAll(
             @Parameter(description = "Filtru tag: IMPORTANT, ACADEMIC, FINANCIAR, TERMEN_LIMITA")
             @RequestParam(required = false) String tag,
+            @Parameter(description = "Caută în titlu")
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        if (tag != null && !tag.isBlank()) {
-            return ResponseEntity.ok(announcementService.getByTag(tag.toUpperCase(), pageable));
-        }
-        return ResponseEntity.ok(announcementService.getAll(pageable));
+        return ResponseEntity.ok(announcementService.getFiltered(tag, search, pageable));
     }
 
     @Operation(summary = "Creare anunt", description = "Creeaza un anunt nou cu tag-uri. Tag-urile noi sunt create automat.")

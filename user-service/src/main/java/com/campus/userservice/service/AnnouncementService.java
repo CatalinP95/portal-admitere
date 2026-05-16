@@ -43,6 +43,14 @@ public class AnnouncementService {
                 .map(AnnouncementDto::from);
     }
 
+    @Transactional(readOnly = true)
+    public Page<AnnouncementDto> getFiltered(String tag, String search, Pageable pageable) {
+        String tagParam = (tag == null || tag.isBlank()) ? null : tag.toUpperCase();
+        String searchParam = (search == null || search.isBlank()) ? null : search;
+        return announcementRepository.findWithFilters(tagParam, searchParam, pageable)
+                .map(AnnouncementDto::from);
+    }
+
     @Transactional
     public AnnouncementDto create(Long userId, AnnouncementRequest request) {
         Announcement announcement = new Announcement();

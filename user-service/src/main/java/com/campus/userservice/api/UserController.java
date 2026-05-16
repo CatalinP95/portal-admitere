@@ -33,8 +33,13 @@ public class UserController {
     })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<UserDto>> getAll(Pageable pageable) {
-        return ResponseEntity.ok(userService.findAll(pageable));
+    public ResponseEntity<Page<UserDto>> getAll(
+            @Parameter(description = "Caută după username sau email")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Filtrează după rol: STUDENT, ADMIN, SECRETARIAT")
+            @RequestParam(required = false) String role,
+            Pageable pageable) {
+        return ResponseEntity.ok(userService.findFiltered(search, role, pageable));
     }
 
     @Operation(summary = "Detalii utilizator", description = "Returneaza un utilizator dupa ID")
