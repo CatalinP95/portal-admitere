@@ -1,5 +1,6 @@
 package com.campus.admissions.api;
 
+import com.campus.admissions.dto.StudentAllocationDataDto;
 import com.campus.admissions.dto.algorithm.ApplicationRankDto;
 import com.campus.admissions.dto.algorithm.BulkStatusRequest;
 import com.campus.admissions.dto.algorithm.FacultySpotsDto;
@@ -7,8 +8,10 @@ import com.campus.admissions.model.Application;
 import com.campus.admissions.model.Faculty;
 import com.campus.admissions.model.Session;
 import com.campus.admissions.service.ApplicationService;
+import com.campus.admissions.service.AverageCompetitionService;
 import com.campus.admissions.service.FacultyService;
 import com.campus.admissions.service.SessionService;
+import com.campus.admissions.service.StudentInfoService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,13 +29,19 @@ public class InternalApiController {
     private final ApplicationService applicationService;
     private final SessionService sessionService;
     private final FacultyService facultyService;
+    private final StudentInfoService studentInfoService;
+    private final AverageCompetitionService averageCompetitionService;
 
     public InternalApiController(ApplicationService applicationService,
                                  SessionService sessionService,
-                                 FacultyService facultyService) {
+                                 FacultyService facultyService,
+                                 StudentInfoService studentInfoService,
+                                 AverageCompetitionService averageCompetitionService) {
         this.applicationService = applicationService;
         this.sessionService = sessionService;
         this.facultyService = facultyService;
+        this.studentInfoService = studentInfoService;
+        this.averageCompetitionService = averageCompetitionService;
     }
 
 
@@ -74,6 +83,21 @@ public class InternalApiController {
     @GetMapping("/sessions/active")
     public ResponseEntity<List<Session>> getActiveSessions() {
         return ResponseEntity.ok(sessionService.findActiveSessions());
+    }
+
+    // date student necesare algoritmului de alocare la camin (consumat de dormitory-service)
+    @GetMapping("/students/{userId}/allocation-data")
+    public ResponseEntity<StudentAllocationDataDto> getStudentAllocationData(@PathVariable Long userId) {
+        StudentAllocationDataDto.StudentAllocationDataDtoBuilder builder =
+                StudentAllocationDataDto.builder().userId(userId);
+
+        averageCompetitionService.getByUserId(userId)
+                .ifPresent(avg -> builder.averageBac(avg.getAverageBac()));
+
+        studentInfoService.findByUserId(userId)
+                .ifPresent(info -> builder.medicalCondition(info.getMedicalCondition()));
+
+        return ResponseEntity.ok(builder.build());
     }
 
     // lista de asteptare per facultate (pentru algoritmul de promovare)

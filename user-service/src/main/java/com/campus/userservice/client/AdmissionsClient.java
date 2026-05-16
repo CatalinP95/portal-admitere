@@ -3,6 +3,7 @@ package com.campus.userservice.client;
 import com.campus.userservice.dto.algorithm.ApplicationRankDto;
 import com.campus.userservice.dto.algorithm.BulkStatusRequest;
 import com.campus.userservice.dto.algorithm.FacultySpotsDto;
+import com.campus.userservice.dto.dormitory.StudentAllocationDataDto;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,4 +20,7 @@ public interface AdmissionsClient {
 
     @PutMapping("/internal/applications/bulk-status")
     void updateStatuses(@RequestBody BulkStatusRequest request);
+
+    @GetMapping("/internal/students/{userId}/allocation-data")
+    StudentAllocationDataDto getStudentAllocationData(@PathVariable("userId") Long userId);
 }

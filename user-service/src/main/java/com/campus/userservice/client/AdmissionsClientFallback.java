@@ -3,6 +3,7 @@ package com.campus.userservice.client;
 import com.campus.userservice.dto.algorithm.ApplicationRankDto;
 import com.campus.userservice.dto.algorithm.BulkStatusRequest;
 import com.campus.userservice.dto.algorithm.FacultySpotsDto;
+import com.campus.userservice.dto.dormitory.StudentAllocationDataDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.openfeign.FallbackFactory;
@@ -33,6 +34,11 @@ public class AdmissionsClientFallback implements FallbackFactory<AdmissionsClien
             @Override
             public void updateStatuses(BulkStatusRequest request) {
                 throw new RuntimeException("admissions-service indisponibil — statusurile nu au fost actualizate");
+            }
+
+            @Override
+            public StudentAllocationDataDto getStudentAllocationData(Long userId) {
+                throw new RuntimeException("admissions-service indisponibil — datele studentului nu au putut fi preluate");
             }
         };
     }

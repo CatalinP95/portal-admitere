@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -77,6 +78,7 @@ class AnnouncementControllerTest {
         req.setTagNames(List.of("IMPORTANT"));
 
         mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -92,6 +94,7 @@ class AnnouncementControllerTest {
         req.setContent("Continut");
 
         mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -106,6 +109,7 @@ class AnnouncementControllerTest {
         req.setContent("Continut vizibil");
 
         mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)));
@@ -136,11 +140,13 @@ class AnnouncementControllerTest {
         academic.setTagNames(List.of("ACADEMIC"));
 
         mockMvc.perform(post("/api/announcements")
+                .with(csrf())
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(important)));
 
         mockMvc.perform(post("/api/announcements")
+                .with(csrf())
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(academic)));
@@ -159,6 +165,7 @@ class AnnouncementControllerTest {
         req.setContent("Continut");
 
         String response = mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -167,6 +174,7 @@ class AnnouncementControllerTest {
         Long id = objectMapper.readTree(response).get("id").asLong();
 
         mockMvc.perform(delete("/api/announcements/" + id)
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
 

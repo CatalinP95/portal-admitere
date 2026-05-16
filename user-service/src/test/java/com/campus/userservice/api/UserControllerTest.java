@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -99,6 +100,7 @@ class UserControllerTest {
         req.setUsername("newuser"); req.setEmail("new@test.com"); req.setPassword("newpass123");
 
         mockMvc.perform(post("/api/users")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -113,6 +115,7 @@ class UserControllerTest {
         req.setUsername("xyz"); req.setEmail("x@x.com"); req.setPassword("pass1234");
 
         mockMvc.perform(post("/api/users")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -122,6 +125,7 @@ class UserControllerTest {
     @Test
     void changeRole_asAdmin_returns200() throws Exception {
         mockMvc.perform(put("/api/users/" + adminId + "/role?role=SECRETARIAT")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("SECRETARIAT"));
@@ -130,7 +134,52 @@ class UserControllerTest {
     @Test
     void deleteUser_asAdmin_returns204() throws Exception {
         mockMvc.perform(delete("/api/users/" + adminId)
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void getUserById_asStudent_returns403() throws Exception {
+        mockMvc.perform(get("/api/users/" + adminId)
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getUserById_notFound_returns404() throws Exception {
+        mockMvc.perform(get("/api/users/99999")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createUser_missingEmail_returns400() throws Exception {
+        RegisterRequest req = new RegisterRequest();
+        req.setUsername("nomail");
+        req.setPassword("pass1234");
+
+        mockMvc.perform(post("/api/users")
+                        .with(csrf())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void changeRole_asStudent_returns403() throws Exception {
+        mockMvc.perform(put("/api/users/" + adminId + "/role?role=SECRETARIAT")
+                        .with(csrf())
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deleteUser_asStudent_returns403() throws Exception {
+        mockMvc.perform(delete("/api/users/" + adminId)
+                        .with(csrf())
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
     }
 }

@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -68,7 +69,7 @@ class UserProfileControllerTest {
         req.setCnp("1990101123456");
         req.setPhone("+40722123456");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -86,7 +87,7 @@ class UserProfileControllerTest {
         req.setCnp("2950202234567");
         req.setPhone("+40733987654");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                 .header("Authorization", "Bearer " + studentToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)));
@@ -111,7 +112,7 @@ class UserProfileControllerTest {
         req.setLastName("Popescu");
         req.setCnp("123");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -125,7 +126,7 @@ class UserProfileControllerTest {
         req.setLastName("User");
         req.setCnp("1990101123456");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                 .header("Authorization", "Bearer " + studentToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)));
@@ -135,4 +136,50 @@ class UserProfileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Test"));
     }
+
+    @Test
+    void getProfileById_asStudent_returns403() throws Exception {
+        mockMvc.perform(get("/api/profile/" + adminId)
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void saveProfile_missingFirstName_returns400() throws Exception {
+        UserProfileRequest req = new UserProfileRequest();
+        req.setLastName("Popescu");
+        req.setCnp("1990101123456");
+
+        mockMvc.perform(put("/api/profile").with(csrf())
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void saveProfile_updateExisting_returns200() throws Exception {
+        UserProfileRequest first = new UserProfileRequest();
+        first.setFirstName("Ion");
+        first.setLastName("Popescu");
+        first.setCnp("1990101123456");
+
+        mockMvc.perform(put("/api/profile").with(csrf())
+                .header("Authorization", "Bearer " + studentToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(first)));
+
+        UserProfileRequest updated = new UserProfileRequest();
+        updated.setFirstName("Gheorghe");
+        updated.setLastName("Popescu");
+        updated.setCnp("1990101123456");
+
+        mockMvc.perform(put("/api/profile").with(csrf())
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updated)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Gheorghe"));
+    }
+
 }

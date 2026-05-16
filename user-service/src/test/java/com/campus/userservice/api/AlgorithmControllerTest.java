@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -87,6 +88,7 @@ class AlgorithmControllerTest {
         doNothing().when(admissionsClient).updateStatuses(any());
 
         mockMvc.perform(post("/api/algorithm/run/1")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalProcessed").value(1))
@@ -96,13 +98,15 @@ class AlgorithmControllerTest {
     @Test
     void runAlgorithm_asStudent_returns403() throws Exception {
         mockMvc.perform(post("/api/algorithm/run/1")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void runAlgorithm_noToken_returns403() throws Exception {
-        mockMvc.perform(post("/api/algorithm/run/1"))
+        mockMvc.perform(post("/api/algorithm/run/1")
+                        .with(csrf()))
                 .andExpect(status().isForbidden());
     }
 }

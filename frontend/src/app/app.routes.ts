@@ -34,6 +34,12 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./features/dashboard/profile/profile').then(m => m.ProfileComponent)
+      },
+      {
+        path: 'coverage',
+        canActivate: [roleGuard],
+        data: { roles: ['ADMIN'] },
+        loadComponent: () => import('./features/dashboard/coverage/coverage').then(m => m.CoverageComponent)
       }
     ]
   },

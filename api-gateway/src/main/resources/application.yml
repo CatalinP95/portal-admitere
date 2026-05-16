@@ -15,10 +15,17 @@ spring:
   cloud:
     gateway:
       routes:
+        - id: coverage-report
+          uri: lb://user-service
+          predicates:
+            - Path=/coverage/**
+          filters:
+            - RemoveResponseHeader=X-Frame-Options
+            - RemoveResponseHeader=Content-Security-Policy
         - id: user-service-public
           uri: lb://user-service
           predicates:
-            - Path=/auth/login, /auth/register, /auth/refresh
+            - Path=/auth/login, /auth/register, /auth/refresh, /auth/csrf
           filters:
             - name: RequestRateLimiter
               args:
@@ -53,7 +60,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "http://localhost:4200,http://localhost:4300"
+            allowedOrigins: "http://localhost:4300"
             allowedMethods: "*"
             allowedHeaders: "*"
             allowCredentials: true

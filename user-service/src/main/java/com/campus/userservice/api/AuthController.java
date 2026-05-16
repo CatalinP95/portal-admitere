@@ -8,8 +8,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -59,5 +62,14 @@ public class AuthController {
     public ResponseEntity<Void> logout(@RequestHeader("Refresh-Token") String refreshToken) {
         authService.logout(refreshToken);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/csrf")
+    public ResponseEntity<Void> csrf(HttpServletRequest request, HttpServletResponse response) {
+        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        if (token != null) {
+            token.getToken();
+        }
+        return ResponseEntity.ok().build();
     }
 }

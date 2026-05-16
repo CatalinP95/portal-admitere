@@ -1,58 +1,220 @@
-Sistem de Admitere și Cazare Studenți
+# Portal Admitere — Sistem Microservicii
 
-O platformă web pentru gestionarea întregului ciclu de admitere universitară și alocare în cămine studențești - de la depunerea cererii, contractul de studii, repartizarea în cameră și până la plata cazării.
+Platformă web pentru gestionarea admiterii universitare și cazării studențești, construită pe arhitectură microservicii cu Spring Boot 3 și Angular 21.
 
- Ce probleme rezolvă?
+---
 
-| Problemă | Soluție |
-| Dosarele de admitere sunt fizice și greu de gestionat | Studenții completează și depun cereri online; secretariatul poate genera contracte PDF |
-| Repartizarea în cămin se face manual | Algoritm automat de alocare în funcție de gen, afecțiuni medicale și locuri disponibile |
-| Plățile pentru cazare nu sunt urmărite central | Plata integrată prin gateway (2Checkout) cu chitanțe și istoric per student |
-| Cererile către secretariat sunt pierdute sau uitate | Studenții depun cereri digitale; flux de stări: Trimisă → Procesată → Ridicată |
-| Nu există un profil centralizat al studentului | Profil unic cu date de identitate, bacalaureat, liceu și studii anterioare | 
+## Arhitectura sistemului
 
-**Roluri:** `ROLE_ADMIN`, `ROLE_STUDENT`, `ROLE_SECRETARIAT`, `ROLE_CAMIN`
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND Angular 21                          │
+│                    http://localhost:4300                             │
+└───────────────────────────┬─────────────────────────────────────────┘
+                            │ HTTP (JWT Bearer + XSRF-TOKEN)
+                            ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    API GATEWAY  :8080                               │
+│         Spring Cloud Gateway · Rate Limiter · JWT Filter            │
+│              Load Balancing (lb://user-service)                     │
+└────────┬──────────────────┬──────────────────┬──────────────────────┘
+         │                  │                  │
+         ▼                  ▼                  ▼
+┌────────────────┐ ┌─────────────────┐ ┌──────────────────┐
+│  USER SERVICE  │ │ ADMISSIONS SVC  │ │  DORMITORY SVC   │
+│   :8081/:8083  │ │      :8082      │ │      :8084       │
+│  (2 instante)  │ │                 │ │                  │
+└───────┬────────┘ └────────┬────────┘ └────────┬─────────┘
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            │ Eureka Client
+                            ▼
+        ┌──────────────────────────────────────┐
+        │   DISCOVERY SERVER (Eureka)  :8761   │
+        └──────────────────────────────────────┘
+        ┌──────────────────────────────────────┐
+        │      CONFIG SERVER           :8888   │
+        │   (JWT secret, credențiale DB)       │
+        └──────────────────────────────────────┘
 
- Module principale
- Modul Admitere
--  Încărcare documente atașate la cerere (scan CI, diplomă, adeverință medicală)
--  Notificare email automată la schimbarea statusului cererii (admis / respins / confirmare)
--  Listă de așteptare automată - dacă un candidat renunță, următorul din listă preia locul
--  Export liste de admiși în format Excel / CSV
--  Grafice și statistici admitere vizibile pentru secretariat (număr cereri pe specializare, rată de admitere)
--  Posibilitate de retragere a cererii de către student înainte de afișarea rezultatelor
--  Vizualizare progres dosar - studentul vede ce date lipsesc din profil înainte de a depune cererea
+INFRASTRUCTURA
+┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐
+│  MySQL    │ │  MongoDB  │ │  Redis    │ │ RabbitMQ  │
+│  :3306    │ │  :27017   │ │  :6379    │ │  :5672    │
+└───────────┘ └───────────┘ └───────────┘ └───────────┘
+┌───────────┐ ┌───────────┐
+│Prometheus │ │  Grafana  │
+│  :9090    │ │  :3000    │
+└───────────┘ └───────────┘
+```
 
- Modul Cămin
--  Preferințe coleg de cameră - studentul poate indica o persoană preferată la depunerea cererii
--  Notificare email automată la repartizarea în cămin (bloc, etaj, cameră, pat)
--  Generare automată contract de cazare PDF după repartizare
--  Cerere de schimb de cameră între doi studenți cu aprobare din partea personalului de cămin
--  Vizualizare plan disponibilitate cămin - câte locuri libere există per bloc și etaj
--  Istoric complet plăți cazare cu posibilitate de descărcare chitanță PDF
+---
 
- Modul Secretariat
--  Posibilitate de respingere a unei cereri cu motiv completat de secretariat
--  Template-uri configurabile pentru adeverințele PDF (text editabil din interfață)
--  Filtrare și căutare avansată în lista de cereri (după nume, facultate, specializare, dată)
--  Export centralizat al cererilor procesate într-o perioadă selectată
+## Diagrama ER — MySQL (portal_admitere_users)
 
- Modul Utilizatori și Cont
--  Resetare parolă prin email (link unic de resetare)
--  Schimbare parolă din contul propriu
--  Încărcare și actualizare fotografie de profil
--  Istoric acțiuni proprii - studentul vede ce cereri a depus, ce plăți a efectuat, ce documente a primit
+```
+┌──────────────────────┐         ┌──────────────────────┐
+│        users         │         │     user_profiles     │
+├──────────────────────┤         ├──────────────────────┤
+│ id          BIGINT PK│◄────────│ id          BIGINT PK│
+│ username    VARCHAR  │  1   1  │ user_id     BIGINT FK│
+│ email       VARCHAR  │         │ first_name  VARCHAR  │
+│ password    VARCHAR  │         │ last_name   VARCHAR  │
+│ role        ENUM     │         │ cnp         VARCHAR  │
+│ enabled     BOOLEAN  │         │ date_of_birth DATE   │
+│ created_at  DATETIME │         │ phone       VARCHAR  │
+│ updated_at  DATETIME │         └──────────────────────┘
+└──────┬───────────────┘
+       │ 1
+       │
+       │ N
+┌──────▼───────────────┐         ┌──────────────────────┐
+│   refresh_tokens     │         │    announcements     │
+├──────────────────────┤         ├──────────────────────┤
+│ id          BIGINT PK│         │ id          BIGINT PK│
+│ token       VARCHAR  │         │ title       VARCHAR  │
+│ user_id     BIGINT FK│    N  1 │ content     TEXT     │
+│ expiry_date DATETIME │◄────────│ created_by_user_id FK│
+│ revoked     BOOLEAN  │         │ created_by  BIGINT   │
+│ device_info VARCHAR  │         │ created_at  DATETIME │
+│ created_at  DATETIME │         │ enabled     BOOLEAN  │
+└──────────────────────┘         └──────────┬───────────┘
+                                            │ N
+                              ┌─────────────┴─────────────┐
+                              │    announcement_tags       │
+                              ├───────────────────────────┤
+                              │ announcement_id   BIGINT  │
+                              │ tag_id            BIGINT  │
+                              └─────────────┬─────────────┘
+                                            │ N
+                                            │ 1
+                                    ┌───────▼──────┐
+                                    │     tags     │
+                                    ├──────────────┤
+                                    │ id   BIGINT  │
+                                    │ name VARCHAR │
+                                    └──────────────┘
 
- Modul Anunțuri
--  Notificare email la publicarea unui anunț nou relevant pentru rolul studentului
--  Marcare anunț ca citit / necitit per utilizator
--  Anunțuri cu atașamente (fișiere PDF, documente)
+MongoDB — portal_admitere_announcements
+┌─────────────────────────────┐
+│         audit_logs          │
+├─────────────────────────────┤
+│ _id       ObjectId          │
+│ userId    Long              │
+│ action    String            │
+│ details   String            │
+│ timestamp LocalDateTime     │
+└─────────────────────────────┘
+```
 
- Rapoarte și Statistici (Admin)
--  Raport centralizat admitere pe sesiune: total candidați, admiși, respinși, retrași
--  Raport ocupare cămin: locuri totale, ocupate, libere, per bloc și etaj
--  Raport financiar: total plăți cazare încasate per sesiune
--  Log de audit - cine a creat / modificat / șters înregistrări și când
+---
 
+## Tehnologii
 
+| Layer | Tehnologie |
+|---|---|
+| Frontend | Angular 21, TypeScript, SCSS |
+| API Gateway | Spring Cloud Gateway 2023.0.1 |
+| Backend | Spring Boot 3.2.5, Java 21 Virtual Threads |
+| Securitate | Spring Security 6, JWT (jjwt 0.12.5), CSRF |
+| Baze de date | MySQL 8.0 (JPA/Hibernate), MongoDB 7 (audit log) |
+| Caching | Redis 7 (`@Cacheable`, TTL 10 min) |
+| Mesagerie | RabbitMQ 3 (producer evenimente admitere) |
+| Service Discovery | Netflix Eureka |
+| Config centralizat | Spring Cloud Config Server |
+| Reziliență | Resilience4j Circuit Breaker + Retry |
+| Load Balancing | Spring Cloud LoadBalancer (round-robin) |
+| Monitorizare | Micrometer + Prometheus + Grafana |
+| Testare | JUnit 5, Mockito, Spring Security Test, JaCoCo |
+| Documentație API | SpringDoc OpenAPI (Swagger UI) |
 
+---
+
+## Rulare locală
+
+### Prerequisite
+- Java 21
+- Maven 3.9+
+- Node.js 20+, Angular CLI 21
+- Docker Desktop
+
+### 1. Pornire infrastructură
+
+```bash
+docker compose up -d
+```
+
+Pornește: MySQL, MongoDB, Redis, RabbitMQ, Prometheus, Grafana.
+
+### 2. Pornire servicii (în ordine)
+
+```bash
+# Discovery Server
+cd discovery-server && mvn spring-boot:run
+
+# Config Server
+cd config-server && mvn spring-boot:run
+
+# User Service
+cd user-service && mvn spring-boot:run
+
+# API Gateway
+cd api-gateway && mvn spring-boot:run
+```
+
+### 3. Pornire frontend
+
+```bash
+cd frontend
+npm install
+ng serve
+```
+
+Aplicația rulează la `http://localhost:4300`.
+
+### 4. Demo Load Balancing (opțional)
+
+```powershell
+.\start-second-instance.ps1
+```
+
+Pornește o a doua instanță de user-service pe portul 8083. Ambele apar în Eureka la `http://localhost:8761`. Header-ul `X-Instance-Port` din răspunsuri arată care instanță a procesat cererea.
+
+---
+
+## URL-uri utile
+
+| Serviciu | URL |
+|---|---|
+| Aplicație web | http://localhost:4300 |
+| Eureka Dashboard | http://localhost:8761 |
+| API Gateway | http://localhost:8080 |
+| Swagger UI (user-service) | http://localhost:8081/swagger-ui.html |
+| Config Server | http://localhost:8888/user-service/default |
+| Grafana | http://localhost:3000 (admin/admin) |
+| Prometheus | http://localhost:9090 |
+| RabbitMQ Management | http://localhost:15672 (guest/guest) |
+| JaCoCo Coverage | http://localhost:8081/coverage/index.html |
+
+---
+
+## Rulare teste și raport JaCoCo
+
+```bash
+cd user-service
+mvn test
+```
+
+Raportul de acoperire se găsește la: `user-service/target/site/jacoco/index.html`
+
+Sau, dacă user-service rulează: `http://localhost:8081/coverage/index.html`
+
+---
+
+## Roluri utilizatori
+
+| Rol | Acces |
+|---|---|
+| `STUDENT` | Profil, anunțuri, depunere cerere admitere, cerere cămin |
+| `SECRETARIAT` | Gestionare cereri admitere, generare contracte PDF |
+| `ADMIN` | CRUD utilizatori, algoritm admitere, monitorizare, anunțuri |
