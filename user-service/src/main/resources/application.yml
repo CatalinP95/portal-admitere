@@ -28,10 +28,12 @@ spring:
         format_sql: true
   data:
     mongodb:
-      uri: mongodb://localhost:27017/portal_admitere_announcements
+      uri: mongodb://localhost:27017/portal_admitere_announcements?serverSelectionTimeoutMS=2000&connectTimeoutMS=2000
     redis:
-      host: localhost
+      host: 127.0.0.1
       port: 6379
+      timeout: 500ms
+      connect-timeout: 500ms
   cache:
     type: redis
     redis:

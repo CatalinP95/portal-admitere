@@ -95,4 +95,15 @@ public class UserService {
         log.info("Changed role for user {} to {}", user.getUsername(), role);
         return UserDto.from(userRepository.save(user));
     }
+
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Parola curentă este incorectă");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        log.info("Password changed for user: {}", user.getUsername());
+    }
 }

@@ -46,7 +46,11 @@ public class UserProfileController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<UserProfileDto> getOwnProfile(Authentication auth) {
         Long userId = Long.parseLong(auth.getName());
-        return ResponseEntity.ok(userProfileService.getByUserId(userId));
+        try {
+            return ResponseEntity.ok(userProfileService.getByUserId(userId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @Operation(summary = "Salveaza profil", description = "Creeaza sau actualizeaza profilul utilizatorului autentificat")

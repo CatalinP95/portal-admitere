@@ -1,8 +1,10 @@
 package com.campus.userservice.api;
 
+import com.campus.userservice.dto.ChangePasswordRequest;
 import com.campus.userservice.dto.RegisterRequest;
 import com.campus.userservice.dto.UserDto;
 import com.campus.userservice.service.UserService;
+import org.springframework.security.core.Authentication;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,6 +26,24 @@ public class UserController {
 
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    @Operation(summary = "Profilul meu", description = "Returneaza datele contului utilizatorului autentificat")
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserDto> getMe(Authentication auth) {
+        Long userId = Long.parseLong(auth.getName());
+        return ResponseEntity.ok(userService.findById(userId));
+    }
+
+    @Operation(summary = "Schimbare parola proprie", description = "Schimba parola utilizatorului autentificat")
+    @PutMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> changePassword(Authentication auth,
+                                                @Valid @RequestBody ChangePasswordRequest request) {
+        Long userId = Long.parseLong(auth.getName());
+        userService.changePassword(userId, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Lista utilizatori", description = "Returneaza toti utilizatorii paginat")
