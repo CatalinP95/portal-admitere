@@ -49,8 +49,7 @@ public class SecurityConfiguration {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                .ignoringRequestMatchers("/auth/login", "/auth/register", "/auth/refresh",
-                        "/auth/logout", "/actuator/**", "/api/health/**", "/api/chat/**", "/api/**")
+                .ignoringRequestMatchers("/**")
             )
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
