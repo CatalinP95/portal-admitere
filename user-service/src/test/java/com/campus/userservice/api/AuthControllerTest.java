@@ -9,11 +9,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.campus.userservice.service.AuditLogService;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -25,6 +28,7 @@ class AuthControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @MockBean private AuditLogService auditLogService;
 
     @Test
     @Order(1)
@@ -102,6 +106,71 @@ class AuthControllerTest {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Order(6)
+    void refresh_validToken_returns200() throws Exception {
+        RegisterRequest reg = new RegisterRequest();
+        reg.setUsername("refreshuser"); reg.setEmail("refresh@test.com"); reg.setPassword("pass1234");
+
+        String body = mockMvc.perform(post("/auth/register").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reg)))
+                .andReturn().getResponse().getContentAsString();
+
+        String refreshToken = objectMapper.readTree(body).get("refreshToken").asText();
+
+        mockMvc.perform(post("/auth/refresh").with(csrf())
+                        .header("Refresh-Token", refreshToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists());
+    }
+
+    @Test
+    @Order(7)
+    void refresh_invalidToken_returns400() throws Exception {
+        mockMvc.perform(post("/auth/refresh").with(csrf())
+                        .header("Refresh-Token", "invalid-token-xyz"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Order(8)
+    void logout_validToken_returns204() throws Exception {
+        RegisterRequest reg = new RegisterRequest();
+        reg.setUsername("logoutuser"); reg.setEmail("logout@test.com"); reg.setPassword("pass1234");
+
+        String body = mockMvc.perform(post("/auth/register").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(reg)))
+                .andReturn().getResponse().getContentAsString();
+
+        String refreshToken = objectMapper.readTree(body).get("refreshToken").asText();
+
+        mockMvc.perform(post("/auth/logout").with(csrf())
+                        .header("Refresh-Token", refreshToken))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @Order(9)
+    void register_duplicateUsername_returns400() throws Exception {
+        RegisterRequest reg = new RegisterRequest();
+        reg.setUsername("dupuser"); reg.setEmail("dup@test.com"); reg.setPassword("pass1234");
+
+        mockMvc.perform(post("/auth/register").with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(reg)));
+
+        RegisterRequest dup = new RegisterRequest();
+        dup.setUsername("dupuser"); dup.setEmail("other@test.com"); dup.setPassword("pass1234");
+
+        mockMvc.perform(post("/auth/register").with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dup)))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -6,17 +6,20 @@ import com.campus.userservice.model.User;
 import com.campus.userservice.repository.UserProfileRepository;
 import com.campus.userservice.repository.UserRepository;
 import com.campus.userservice.security.JwtUtil;
+import com.campus.userservice.service.AuditLogService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -31,6 +34,7 @@ class UserProfileControllerTest {
     @Autowired private UserProfileRepository userProfileRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
+    @MockBean private AuditLogService auditLogService;
 
     private String studentToken;
     private String adminToken;
@@ -65,7 +69,7 @@ class UserProfileControllerTest {
         req.setCnp("1990101123456");
         req.setPhone("+40722123456");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -83,7 +87,7 @@ class UserProfileControllerTest {
         req.setCnp("2950202234567");
         req.setPhone("+40733987654");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                 .header("Authorization", "Bearer " + studentToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)));
@@ -108,7 +112,7 @@ class UserProfileControllerTest {
         req.setLastName("Popescu");
         req.setCnp("123");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -122,7 +126,7 @@ class UserProfileControllerTest {
         req.setLastName("User");
         req.setCnp("1990101123456");
 
-        mockMvc.perform(put("/api/profile")
+        mockMvc.perform(put("/api/profile").with(csrf())
                 .header("Authorization", "Bearer " + studentToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)));
@@ -132,4 +136,50 @@ class UserProfileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("Test"));
     }
+
+    @Test
+    void getProfileById_asStudent_returns403() throws Exception {
+        mockMvc.perform(get("/api/profile/" + adminId)
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void saveProfile_missingFirstName_returns400() throws Exception {
+        UserProfileRequest req = new UserProfileRequest();
+        req.setLastName("Popescu");
+        req.setCnp("1990101123456");
+
+        mockMvc.perform(put("/api/profile").with(csrf())
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void saveProfile_updateExisting_returns200() throws Exception {
+        UserProfileRequest first = new UserProfileRequest();
+        first.setFirstName("Ion");
+        first.setLastName("Popescu");
+        first.setCnp("1990101123456");
+
+        mockMvc.perform(put("/api/profile").with(csrf())
+                .header("Authorization", "Bearer " + studentToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(first)));
+
+        UserProfileRequest updated = new UserProfileRequest();
+        updated.setFirstName("Gheorghe");
+        updated.setLastName("Popescu");
+        updated.setCnp("1990101123456");
+
+        mockMvc.perform(put("/api/profile").with(csrf())
+                        .header("Authorization", "Bearer " + studentToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updated)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Gheorghe"));
+    }
+
 }

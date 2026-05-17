@@ -1,8 +1,10 @@
 package com.campus.userservice.api;
 
+import com.campus.userservice.dto.ChangePasswordRequest;
 import com.campus.userservice.dto.RegisterRequest;
 import com.campus.userservice.dto.UserDto;
 import com.campus.userservice.service.UserService;
+import org.springframework.security.core.Authentication;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,6 +28,24 @@ public class UserController {
         this.userService = userService;
     }
 
+    @Operation(summary = "Profilul meu", description = "Returneaza datele contului utilizatorului autentificat")
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<UserDto> getMe(Authentication auth) {
+        Long userId = Long.parseLong(auth.getName());
+        return ResponseEntity.ok(userService.findById(userId));
+    }
+
+    @Operation(summary = "Schimbare parola proprie", description = "Schimba parola utilizatorului autentificat")
+    @PutMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> changePassword(Authentication auth,
+                                                @Valid @RequestBody ChangePasswordRequest request) {
+        Long userId = Long.parseLong(auth.getName());
+        userService.changePassword(userId, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
+    }
+
     @Operation(summary = "Lista utilizatori", description = "Returneaza toti utilizatorii paginat")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Lista returnata cu succes"),
@@ -33,8 +53,13 @@ public class UserController {
     })
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Page<UserDto>> getAll(Pageable pageable) {
-        return ResponseEntity.ok(userService.findAll(pageable));
+    public ResponseEntity<Page<UserDto>> getAll(
+            @Parameter(description = "Caută după username sau email")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Filtrează după rol: STUDENT, ADMIN, SECRETARIAT")
+            @RequestParam(required = false) String role,
+            Pageable pageable) {
+        return ResponseEntity.ok(userService.findFiltered(search, role, pageable));
     }
 
     @Operation(summary = "Detalii utilizator", description = "Returneaza un utilizator dupa ID")

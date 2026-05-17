@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,14 +16,34 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException e) {
+        return ResponseEntity.status(404).body(new ErrorResponse("USER_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(AnnouncementNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAnnouncementNotFound(AnnouncementNotFoundException e) {
+        return ResponseEntity.status(404).body(new ErrorResponse("ANNOUNCEMENT_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(TagNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleTagNotFound(TagNotFoundException e) {
+        return ResponseEntity.status(404).body(new ErrorResponse("TAG_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(AlgorithmException.class)
+    public ResponseEntity<ErrorResponse> handleAlgorithm(AlgorithmException e) {
+        return ResponseEntity.status(503).body(new ErrorResponse("ALGORITHM_SERVICE_UNAVAILABLE", e.getMessage()));
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, String>> handleBadCredentials(BadCredentialsException e) {
-        return ResponseEntity.status(401).body(Map.of("error", "Invalid username or password"));
+    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException e) {
+        return ResponseEntity.status(401).body(new ErrorResponse("INVALID_CREDENTIALS", "Invalid username or password"));
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, String>> handleAuthentication(AuthenticationException e) {
-        return ResponseEntity.status(401).body(Map.of("error", "Authentication failed"));
+    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException e) {
+        return ResponseEntity.status(401).body(new ErrorResponse("AUTHENTICATION_FAILED", "Authentication failed"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -31,8 +52,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException e) {
-        return ResponseEntity.status(403).body(Map.of("error", "Access denied"));
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e) {
+        return ResponseEntity.status(403).body(new ErrorResponse("ACCESS_DENIED", "Access denied"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -44,8 +65,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(400).body(errors);
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException e) {
+        return ResponseEntity.status(404).body(new ErrorResponse("NOT_FOUND", e.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleGeneral(Exception e) {
-        return ResponseEntity.status(500).body(Map.of("error", "Internal server error"));
+    public ResponseEntity<ErrorResponse> handleGeneral(Exception e) {
+        return ResponseEntity.status(500).body(new ErrorResponse("INTERNAL_ERROR", "Internal server error"));
     }
 }

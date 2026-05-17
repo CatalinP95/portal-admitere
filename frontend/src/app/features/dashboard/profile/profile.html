@@ -1,0 +1,147 @@
+<!-- Account card — apare imediat din localStorage, email/dată se completează async -->
+<div class="account-card">
+  <div class="avatar-lg">{{ initials }}</div>
+  <div class="account-info">
+    <h1 class="account-name">{{ username }}</h1>
+    <p class="account-email">
+      <span *ngIf="meLoading" class="skeleton-text">se încarcă...</span>
+      <span *ngIf="!meLoading">{{ email }}</span>
+    </p>
+    <div class="account-meta">
+      <span class="role-badge" [class]="'role-badge role-' + role.toLowerCase()">{{ role }}</span>
+      <span class="account-since" *ngIf="!meLoading && createdAt !== '—'">
+        Activ din {{ createdAt | date:'dd/MM/yyyy' }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Date personale -->
+<div class="section-card">
+  <div class="section-header">
+    <div class="section-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="section-title">Date personale</h2>
+      <p class="section-sub">Prenume, nume, CNP și date de contact</p>
+    </div>
+  </div>
+
+  <div *ngIf="profileFormLoading" class="state-center-inline">
+    <div class="spinner"></div>
+  </div>
+
+  <ng-container *ngIf="!profileFormLoading">
+    <div *ngIf="profileSaved" class="alert-success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      Date salvate cu succes.
+    </div>
+    <div *ngIf="profileError" class="alert-error">{{ profileError }}</div>
+
+    <form [formGroup]="profileForm" (ngSubmit)="submitProfile()" class="profile-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prenume <span class="req">*</span></label>
+          <input formControlName="firstName" type="text" placeholder="ex: Ion" />
+          <span class="field-error" *ngIf="f['firstName'].touched && f['firstName'].errors?.['required']">Câmp obligatoriu</span>
+        </div>
+        <div class="form-group">
+          <label>Nume <span class="req">*</span></label>
+          <input formControlName="lastName" type="text" placeholder="ex: Popescu" />
+          <span class="field-error" *ngIf="f['lastName'].touched && f['lastName'].errors?.['required']">Câmp obligatoriu</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>CNP</label>
+          <input formControlName="cnp" type="text" placeholder="13 cifre" maxlength="13" />
+          <span class="field-error" *ngIf="f['cnp'].touched && f['cnp'].errors?.['pattern']">CNP invalid (13 cifre)</span>
+        </div>
+        <div class="form-group">
+          <label>Dată naștere</label>
+          <input formControlName="dateOfBirth" type="date" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Telefon</label>
+        <input formControlName="phone" type="tel" placeholder="ex: 0721234567" />
+        <span class="field-error" *ngIf="f['phone'].touched && f['phone'].errors?.['pattern']">Număr de telefon invalid</span>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" [disabled]="profileLoading">
+          <svg *ngIf="!profileLoading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          {{ profileLoading ? 'Se salvează...' : 'Salvează datele' }}
+        </button>
+      </div>
+    </form>
+  </ng-container>
+</div>
+
+<!-- Schimbare parolă -->
+<div class="section-card">
+  <div class="section-header">
+    <div class="section-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div>
+      <h2 class="section-title">Schimbare parolă</h2>
+      <p class="section-sub">Introduce parola curentă și setează una nouă</p>
+    </div>
+  </div>
+
+  <div *ngIf="passwordSaved" class="alert-success">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Parola a fost schimbată cu succes.
+  </div>
+  <div *ngIf="passwordError" class="alert-error">{{ passwordError }}</div>
+
+  <form [formGroup]="passwordForm" (ngSubmit)="submitPassword()" class="profile-form">
+    <div class="form-group">
+      <label>Parola curentă <span class="req">*</span></label>
+      <input formControlName="currentPassword" type="password" placeholder="Parola actuală" />
+      <span class="field-error" *ngIf="p['currentPassword'].touched && p['currentPassword'].errors?.['required']">Câmp obligatoriu</span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Parola nouă <span class="req">*</span></label>
+        <input formControlName="newPassword" type="password" placeholder="Minim 8 caractere" />
+        <span class="field-error" *ngIf="p['newPassword'].touched && p['newPassword'].errors?.['required']">Câmp obligatoriu</span>
+        <span class="field-error" *ngIf="p['newPassword'].touched && p['newPassword'].errors?.['minlength']">Minim 8 caractere</span>
+      </div>
+      <div class="form-group">
+        <label>Confirmă parola <span class="req">*</span></label>
+        <input formControlName="confirmPassword" type="password" placeholder="Repetă parola nouă" />
+        <span class="field-error" *ngIf="p['confirmPassword'].touched && passwordForm.errors?.['passwordMismatch']">Parolele nu coincid</span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary" [disabled]="passwordLoading">
+        <svg *ngIf="!passwordLoading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        {{ passwordLoading ? 'Se actualizează...' : 'Actualizează parola' }}
+      </button>
+    </div>
+  </form>
+</div>

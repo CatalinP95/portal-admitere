@@ -1,0 +1,28 @@
+<div class="page-header">
+  <div>
+    <h1>Test Coverage</h1>
+    <p>Raport JaCoCo — acoperire cod prin teste unitare și de integrare</p>
+  </div>
+  <div class="badge">81%</div>
+</div>
+
+<div class="coverage-card">
+  <div class="coverage-toolbar">
+    <div class="toolbar-info">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <polyline points="9 11 12 14 22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      <span>JaCoCo — user-service</span>
+    </div>
+    <a [href]="coverageUrl" target="_blank" rel="noopener noreferrer" class="open-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </svg>
+      Tab nou
+    </a>
+  </div>
+  <iframe [src]="coverageUrl" class="coverage-frame" title="JaCoCo Coverage Report"></iframe>
+</div>

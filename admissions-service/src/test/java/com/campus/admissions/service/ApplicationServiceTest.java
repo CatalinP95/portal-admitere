@@ -1,6 +1,8 @@
 package com.campus.admissions.service;
 
 import com.campus.admissions.dto.algorithm.ApplicationRankDto;
+import com.campus.admissions.dto.algorithm.ApplicationStatusUpdate;
+import com.campus.admissions.dto.algorithm.BulkStatusRequest;
 import com.campus.admissions.model.*;
 import com.campus.admissions.repository.ApplicationRepository;
 import jakarta.persistence.EntityManager;
@@ -211,15 +213,7 @@ class ApplicationServiceTest {
 
         verify(applicationRepository, atLeastOnce()).save(any());
     }
-    @Test
-    void bulkUpdate_shouldSaveAll() {
-        Application a1 = new Application();
-        Application a2 = new Application();
 
-        applicationService.bulkUpdateStatus(List.of(a1, a2));
-
-        verify(applicationRepository, times(2)).save(any());
-    }
 
     @Test
     void delete_shouldCallRepository() {
@@ -369,5 +363,45 @@ class ApplicationServiceTest {
 
         verify(applicationRepository)
                 .findBySessionIdAndStatus(sessionId, status);
+    }
+
+    @Test
+    void bulkUpdateStatus_shouldUpdateApplicationStatuses() {
+
+        // Arrange
+        Application application1 = new Application();
+        application1.setId(1);
+        application1.setStatus("PENDING");
+
+        Application application2 = new Application();
+        application2.setId(2);
+        application2.setStatus("PENDING");
+
+        ApplicationStatusUpdate update1 = new ApplicationStatusUpdate();
+        update1.setApplicationId(1L);
+        update1.setStatus(ApplicationStatus.APPROVED);
+
+        ApplicationStatusUpdate update2 = new ApplicationStatusUpdate();
+        update2.setApplicationId(2L);
+        update2.setStatus(ApplicationStatus.REJECTED);
+
+        BulkStatusRequest request = BulkStatusRequest.builder()
+                .updates(List.of(update1, update2)).build();
+
+        when(applicationRepository.getReferenceById(1))
+                .thenReturn(application1);
+
+        when(applicationRepository.getReferenceById(2))
+                .thenReturn(application2);
+
+        // Act
+        applicationService.bulkUpdateStatus(request);
+
+        // Assert
+        assertEquals(ApplicationStatus.APPROVED.toString(), application1.getStatus());
+        assertEquals(ApplicationStatus.REJECTED.toString(), application2.getStatus());
+
+        verify(applicationRepository).getReferenceById(1);
+        verify(applicationRepository).getReferenceById(2);
     }
 }

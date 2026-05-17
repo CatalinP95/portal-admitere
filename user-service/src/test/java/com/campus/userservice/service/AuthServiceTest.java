@@ -19,6 +19,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -114,5 +115,89 @@ class AuthServiceTest {
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
         assertThrows(BadCredentialsException.class, () -> authService.login(req));
+    }
+
+    @Test
+    void refresh_success() {
+        User user = new User();
+        user.setId(1L); user.setUsername("ion"); user.setRole(Role.STUDENT);
+
+        RefreshToken stored = new RefreshToken();
+        stored.setToken("refresh-token");
+        stored.setRevoked(false);
+        stored.setExpiryDate(LocalDateTime.now().plusDays(7));
+        stored.setUser(user);
+
+        when(refreshTokenRepository.findByToken("refresh-token")).thenReturn(Optional.of(stored));
+        when(jwtUtil.generateToken("1", "STUDENT")).thenReturn("new-access");
+        when(jwtUtil.generateRefreshToken("1", "STUDENT")).thenReturn("new-refresh");
+        when(refreshTokenRepository.save(any())).thenReturn(new RefreshToken());
+
+        AuthResponse response = authService.refresh("refresh-token");
+
+        assertEquals("new-access", response.getAccessToken());
+        assertEquals("STUDENT", response.getRole());
+        assertTrue(stored.isRevoked());
+    }
+
+    @Test
+    void refresh_revokedToken_throws() {
+        RefreshToken stored = new RefreshToken();
+        stored.setToken("revoked-token");
+        stored.setRevoked(true);
+        stored.setExpiryDate(LocalDateTime.now().plusDays(1));
+
+        when(refreshTokenRepository.findByToken("revoked-token")).thenReturn(Optional.of(stored));
+
+        assertThrows(IllegalArgumentException.class, () -> authService.refresh("revoked-token"));
+    }
+
+    @Test
+    void refresh_expiredToken_throws() {
+        RefreshToken stored = new RefreshToken();
+        stored.setToken("expired-token");
+        stored.setRevoked(false);
+        stored.setExpiryDate(LocalDateTime.now().minusDays(1));
+
+        when(refreshTokenRepository.findByToken("expired-token")).thenReturn(Optional.of(stored));
+        when(refreshTokenRepository.save(any())).thenReturn(stored);
+
+        assertThrows(IllegalArgumentException.class, () -> authService.refresh("expired-token"));
+        assertTrue(stored.isRevoked());
+    }
+
+    @Test
+    void refresh_tokenNotFound_throws() {
+        when(refreshTokenRepository.findByToken("unknown")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> authService.refresh("unknown"));
+    }
+
+    @Test
+    void logout_revokesToken() {
+        User user = new User();
+        user.setId(1L); user.setUsername("ion"); user.setRole(Role.STUDENT);
+
+        RefreshToken stored = new RefreshToken();
+        stored.setToken("my-token");
+        stored.setRevoked(false);
+        stored.setUser(user);
+
+        when(refreshTokenRepository.findByToken("my-token")).thenReturn(Optional.of(stored));
+        when(refreshTokenRepository.save(any())).thenReturn(stored);
+
+        authService.logout("my-token");
+
+        assertTrue(stored.isRevoked());
+        verify(refreshTokenRepository).save(stored);
+    }
+
+    @Test
+    void logout_unknownToken_doesNothing() {
+        when(refreshTokenRepository.findByToken("ghost")).thenReturn(Optional.empty());
+
+        authService.logout("ghost");
+
+        verify(refreshTokenRepository, never()).save(any());
     }
 }

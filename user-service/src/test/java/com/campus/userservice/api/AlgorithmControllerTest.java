@@ -1,10 +1,13 @@
 package com.campus.userservice.api;
 
 import com.campus.userservice.client.AdmissionsClient;
+import com.campus.userservice.service.AuditLogService;
 import com.campus.userservice.dto.algorithm.ApplicationRankDto;
 import com.campus.userservice.dto.algorithm.FacultySpotsDto;
 import com.campus.userservice.model.Role;
 import com.campus.userservice.model.User;
+import com.campus.userservice.repository.RefreshTokenRepository;
+import com.campus.userservice.repository.UserProfileRepository;
 import com.campus.userservice.repository.UserRepository;
 import com.campus.userservice.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -34,15 +38,20 @@ class AlgorithmControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private UserRepository userRepository;
+    @Autowired private UserProfileRepository userProfileRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private PasswordEncoder passwordEncoder;
 
     @MockBean private AdmissionsClient admissionsClient;
+    @MockBean private AuditLogService auditLogService;
 
     private String adminToken;
     private String studentToken;
 
     @BeforeEach
     void setUp() {
+        userProfileRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
 
         User admin = new User();
@@ -79,6 +88,7 @@ class AlgorithmControllerTest {
         doNothing().when(admissionsClient).updateStatuses(any());
 
         mockMvc.perform(post("/api/algorithm/run/1")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalProcessed").value(1))
@@ -88,13 +98,15 @@ class AlgorithmControllerTest {
     @Test
     void runAlgorithm_asStudent_returns403() throws Exception {
         mockMvc.perform(post("/api/algorithm/run/1")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + studentToken))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void runAlgorithm_noToken_returns403() throws Exception {
-        mockMvc.perform(post("/api/algorithm/run/1"))
+        mockMvc.perform(post("/api/algorithm/run/1")
+                        .with(csrf()))
                 .andExpect(status().isForbidden());
     }
 }

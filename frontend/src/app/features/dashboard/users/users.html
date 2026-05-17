@@ -1,0 +1,175 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Utilizatori</h1>
+    <p class="page-sub">{{ page?.totalElements ?? 0 }} utilizatori înregistrați</p>
+  </div>
+  <button class="btn-primary" (click)="openCreate()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Adaugă utilizator
+  </button>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <div class="search-wrap">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" class="search-input" placeholder="Caută după username sau email..."
+      [value]="searchTerm" (input)="onSearch($any($event.target).value)" />
+    <button *ngIf="searchTerm" class="search-clear" (click)="onSearch('')">✕</button>
+  </div>
+
+  <select class="filter-select" [value]="roleFilter" (change)="onRoleFilter($any($event.target).value)">
+    <option value="">Toate rolurile</option>
+    <option *ngFor="let r of roles" [value]="r">{{ r }}</option>
+  </select>
+</div>
+
+<div *ngIf="loading" class="state-center">
+  <div class="spinner"></div>
+  <p>Se încarcă...</p>
+</div>
+
+<div *ngIf="error && !loading" class="state-error">{{ error }}</div>
+
+<div class="table-wrapper" *ngIf="!loading && page && !page.empty">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th class="sortable" (click)="sort('username')">
+          Utilizator
+          <span class="sort-icon" [class.active]="sortField === 'username'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <polyline *ngIf="sortField === 'username' && sortDir === 'asc'" points="18 15 12 9 6 15"/>
+              <polyline *ngIf="sortField === 'username' && sortDir === 'desc'" points="6 9 12 15 18 9"/>
+              <polyline *ngIf="sortField !== 'username'" points="8 9 12 5 16 9"/>
+            </svg>
+          </span>
+        </th>
+        <th class="sortable" (click)="sort('email')">
+          Email
+          <span class="sort-icon" [class.active]="sortField === 'email'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <polyline *ngIf="sortField === 'email' && sortDir === 'asc'" points="18 15 12 9 6 15"/>
+              <polyline *ngIf="sortField === 'email' && sortDir === 'desc'" points="6 9 12 15 18 9"/>
+              <polyline *ngIf="sortField !== 'email'" points="8 9 12 5 16 9"/>
+            </svg>
+          </span>
+        </th>
+        <th class="sortable" (click)="sort('role')">
+          Rol
+          <span class="sort-icon" [class.active]="sortField === 'role'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <polyline *ngIf="sortField === 'role' && sortDir === 'asc'" points="18 15 12 9 6 15"/>
+              <polyline *ngIf="sortField === 'role' && sortDir === 'desc'" points="6 9 12 15 18 9"/>
+              <polyline *ngIf="sortField !== 'role'" points="8 9 12 5 16 9"/>
+            </svg>
+          </span>
+        </th>
+        <th>Status</th>
+        <th class="sortable" (click)="sort('createdAt')">
+          Creat la
+          <span class="sort-icon" [class.active]="sortField === 'createdAt'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+              <polyline *ngIf="sortField === 'createdAt' && sortDir === 'asc'" points="18 15 12 9 6 15"/>
+              <polyline *ngIf="sortField === 'createdAt' && sortDir === 'desc'" points="6 9 12 15 18 9"/>
+              <polyline *ngIf="sortField !== 'createdAt'" points="8 9 12 5 16 9"/>
+            </svg>
+          </span>
+        </th>
+        <th>Acțiuni</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let u of page.content" [class.row-disabled]="!u.enabled">
+        <td>
+          <div class="user-cell">
+            <div class="avatar-sm">{{ u.username[0].toUpperCase() }}</div>
+            <span class="user-name">{{ u.username }}</span>
+          </div>
+        </td>
+        <td class="text-muted">{{ u.email }}</td>
+        <td>
+          <span class="role-badge" [class]="'role-badge role-' + u.role.toLowerCase()">{{ u.role }}</span>
+        </td>
+        <td>
+          <span class="status-badge" [class.active]="u.enabled">{{ u.enabled ? 'Activ' : 'Dezactivat' }}</span>
+        </td>
+        <td class="text-muted">{{ u.createdAt | date: 'dd/MM/yyyy' }}</td>
+        <td>
+          <div class="actions-cell">
+            <select class="role-select" (change)="changeRole(u.id, $any($event.target).value)">
+              <option *ngFor="let r of roles" [value]="r" [selected]="r === u.role">{{ r }}</option>
+            </select>
+            <button class="btn-icon edit" (click)="openEdit(u)" title="Editează">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="btn-icon delete" (click)="delete(u.id)" title="Dezactivează">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div *ngIf="!loading && page?.empty" class="state-center">
+  <div style="font-size:2.5rem">👥</div>
+  <p>Niciun utilizator{{ searchTerm ? ' pentru "' + searchTerm + '"' : '' }}{{ roleFilter ? ' cu rolul ' + roleFilter : '' }}.</p>
+</div>
+
+<div class="pagination" *ngIf="page && page.totalPages > 1">
+  <button class="page-btn" [disabled]="page.first" (click)="goToPage(currentPage - 1)">← Anterior</button>
+  <span class="page-info">Pagina {{ currentPage + 1 }} din {{ page.totalPages }} ({{ page.totalElements }} total)</span>
+  <button class="page-btn" [disabled]="page.last" (click)="goToPage(currentPage + 1)">Următor →</button>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ editingId ? 'Editează utilizator' : 'Utilizator nou' }}</h2>
+      <button class="modal-close" (click)="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="form-group">
+        <label>Username <span class="req">*</span></label>
+        <input formControlName="username" type="text" placeholder="ex: ionpopescu" />
+        <span class="field-error" *ngIf="username.touched && username.errors?.['required']">Câmp obligatoriu</span>
+        <span class="field-error" *ngIf="username.touched && username.errors?.['minlength']">Minim 3 caractere</span>
+      </div>
+      <div class="form-group">
+        <label>Email <span class="req">*</span></label>
+        <input formControlName="email" type="email" placeholder="ex: ion@example.com" />
+        <span class="field-error" *ngIf="email.touched && email.errors?.['required']">Câmp obligatoriu</span>
+        <span class="field-error" *ngIf="email.touched && email.errors?.['email']">Email invalid</span>
+      </div>
+      <div class="form-group">
+        <label>Parolă <span class="req">*</span></label>
+        <input formControlName="password" type="password" placeholder="Minim 8 caractere" />
+        <span class="field-error" *ngIf="password.touched && password.errors?.['required']">Câmp obligatoriu</span>
+        <span class="field-error" *ngIf="password.touched && password.errors?.['minlength']">Minim 8 caractere</span>
+      </div>
+      <div class="modal-error" *ngIf="modalError">{{ modalError }}</div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closeModal()">Anulează</button>
+        <button type="submit" class="btn-primary" [disabled]="modalLoading">{{ modalLoading ? 'Se salvează...' : 'Salvează' }}</button>
+      </div>
+    </form>
+  </div>
+</div>

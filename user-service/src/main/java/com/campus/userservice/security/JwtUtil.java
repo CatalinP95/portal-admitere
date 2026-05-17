@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -11,16 +12,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.UUID;
 
+@RefreshScope
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
     private String secret;
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:86400000}")
     private long expiration;
 
-    @Value("${jwt.refresh-expiration}")
+    @Value("${jwt.refresh-expiration:604800000}")
     private long refreshExpiration;
 
     private SecretKey getKey() {
@@ -33,6 +35,10 @@ public class JwtUtil {
 
     public String generateRefreshToken(String userId, String role) {
         return buildToken(userId, role, refreshExpiration);
+    }
+
+    public String generateTokenWithExpiry(String userId, String role, long customExpiryMs) {
+        return buildToken(userId, role, customExpiryMs);
     }
 
     private String buildToken(String subject, String role, long ttl) {

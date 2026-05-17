@@ -4,7 +4,9 @@ import com.campus.userservice.dto.AnnouncementRequest;
 import com.campus.userservice.model.Role;
 import com.campus.userservice.model.User;
 import com.campus.userservice.repository.AnnouncementRepository;
+import com.campus.userservice.repository.RefreshTokenRepository;
 import com.campus.userservice.repository.TagRepository;
+import com.campus.userservice.repository.UserProfileRepository;
 import com.campus.userservice.repository.UserRepository;
 import com.campus.userservice.security.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,7 +14,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import com.campus.userservice.service.AuditLogService;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -20,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -31,10 +36,13 @@ class AnnouncementControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private JwtUtil jwtUtil;
     @Autowired private UserRepository userRepository;
+    @Autowired private UserProfileRepository userProfileRepository;
+    @Autowired private RefreshTokenRepository refreshTokenRepository;
     @Autowired private AnnouncementRepository announcementRepository;
     @Autowired private TagRepository tagRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private ObjectMapper objectMapper;
+    @MockBean private AuditLogService auditLogService;
 
     private String adminToken;
     private String studentToken;
@@ -43,6 +51,8 @@ class AnnouncementControllerTest {
     void setUp() {
         announcementRepository.deleteAll();
         tagRepository.deleteAll();
+        userProfileRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
 
         User admin = new User();
@@ -68,6 +78,7 @@ class AnnouncementControllerTest {
         req.setTagNames(List.of("IMPORTANT"));
 
         mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -83,6 +94,7 @@ class AnnouncementControllerTest {
         req.setContent("Continut");
 
         mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + studentToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -97,6 +109,7 @@ class AnnouncementControllerTest {
         req.setContent("Continut vizibil");
 
         mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)));
@@ -127,11 +140,13 @@ class AnnouncementControllerTest {
         academic.setTagNames(List.of("ACADEMIC"));
 
         mockMvc.perform(post("/api/announcements")
+                .with(csrf())
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(important)));
 
         mockMvc.perform(post("/api/announcements")
+                .with(csrf())
                 .header("Authorization", "Bearer " + adminToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(academic)));
@@ -150,6 +165,7 @@ class AnnouncementControllerTest {
         req.setContent("Continut");
 
         String response = mockMvc.perform(post("/api/announcements")
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
@@ -158,6 +174,7 @@ class AnnouncementControllerTest {
         Long id = objectMapper.readTree(response).get("id").asLong();
 
         mockMvc.perform(delete("/api/announcements/" + id)
+                        .with(csrf())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
 
