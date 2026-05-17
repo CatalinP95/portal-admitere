@@ -3,11 +3,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Page } from '../models/page.model';
 import { User, UserRequest } from '../models/user.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private http = inject(HttpClient);
-  private base = 'http://localhost:8080/api/users';
+  private base = `${environment.apiUrl}/api/users`;
 
   getAll(page = 0, size = 10, sort = 'username,asc', search?: string, role?: string): Observable<Page<User>> {
     let params = new HttpParams().set('page', page).set('size', size).set('sort', sort);

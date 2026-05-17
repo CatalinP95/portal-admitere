@@ -4,12 +4,13 @@ import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { User } from '../models/user.model';
 import { UserProfile, UserProfileRequest, ChangePasswordRequest } from '../models/user-profile.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
   private http = inject(HttpClient);
-  private usersBase = 'http://localhost:8080/api/users';
-  private profileBase = 'http://localhost:8080/api/profile';
+  private usersBase = `${environment.apiUrl}/api/users`;
+  private profileBase = `${environment.apiUrl}/api/profile`;
 
   getMe(): Observable<User> {
     return this.http.get<User>(`${this.usersBase}/me`);
