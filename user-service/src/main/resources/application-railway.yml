@@ -12,6 +12,7 @@ spring:
   data:
     mongodb:
       uri: ${MONGO_URL}
+      database: portal_admitere
 
   cache:
     type: none
