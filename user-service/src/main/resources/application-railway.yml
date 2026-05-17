@@ -61,6 +61,9 @@ management:
 groq:
   api-key: ${GROQ_API_KEY:}
 
+allowed:
+  origins: ${ALLOWED_ORIGINS:http://localhost:4300}
+
 logging:
   level:
     com.campus.userservice: INFO

@@ -182,7 +182,17 @@ Pornește o a doua instanță de user-service pe portul 8083. Ambele apar în Eu
 
 ---
 
-## URL-uri utile
+## Deployment live (Railway)
+
+| Serviciu | URL |
+|---|---|
+| user-service (producție) | https://portal-admitere-production.up.railway.app |
+| Swagger UI (producție) | https://portal-admitere-production.up.railway.app/swagger-ui.html |
+| Health check | https://portal-admitere-production.up.railway.app/actuator/health |
+
+---
+
+## URL-uri utile (local)
 
 | Serviciu | URL |
 |---|---|
