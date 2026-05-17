@@ -35,7 +35,7 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/auth/logout, /api/users/**, /api/profile/**, /api/menu/**, /api/announcements/**, /api/algorithm/**, /api/health/**
+            - Path=/auth/logout, /api/users/**, /api/profile/**, /api/menu/**, /api/announcements/**, /api/algorithm/**, /api/chat/**, /api/health/**
           filters:
             - name: JwtGatewayFilter
             - name: RequestRateLimiter

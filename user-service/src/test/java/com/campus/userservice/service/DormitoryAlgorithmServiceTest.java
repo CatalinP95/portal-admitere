@@ -24,19 +24,19 @@ class DormitoryAlgorithmServiceTest {
     @Mock private AdmissionsClient admissionsClient;
     @InjectMocks private DormitoryAlgorithmService service;
 
-    private BlockRequestRankDto cerere(Integer id, Long userId, String sex, Double distKm) {
+    private BlockRequestRankDto cerere(Integer id, Long userId) {
         BlockRequestRankDto dto = new BlockRequestRankDto();
         dto.setBlockRequestId(id);
         dto.setUserId(userId);
-        dto.setSex(sex);
-        dto.setDistanceKm(distKm);
         return dto;
     }
 
-    private StudentAllocationDataDto dateStudent(Float bac, String conditie) {
+    private StudentAllocationDataDto dateStudent(Float bac, String conditie, String sex, Double distKm) {
         StudentAllocationDataDto dto = new StudentAllocationDataDto();
         dto.setAverageBac(bac);
         dto.setMedicalCondition(conditie);
+        dto.setSex(sex);
+        dto.setDistanceKm(distKm);
         return dto;
     }
 
@@ -108,16 +108,16 @@ class DormitoryAlgorithmServiceTest {
     @Test
     void runAllocation_sorteazaDescrescatorDupaScor() {
         when(dormitoryClient.getPendingRequests(1)).thenReturn(List.of(
-                cerere(10, 100L, "M", 100.0),  // scor mic
-                cerere(20, 200L, "F", 400.0),  // scor mare
-                cerere(30, 300L, "M", 250.0)   // scor mediu
+                cerere(10, 100L),  // scor mic
+                cerere(20, 200L),  // scor mare
+                cerere(30, 300L)   // scor mediu
         ));
         // bac 6 → scor = 0.9*0.6 + 0.1*0.2 = 0.54 + 0.02 = 0.56
-        when(admissionsClient.getStudentAllocationData(100L)).thenReturn(dateStudent(6.0f, "SANATOS"));
+        when(admissionsClient.getStudentAllocationData(100L)).thenReturn(dateStudent(6.0f, "SANATOS", "M", 100.0));
         // bac 9 → scor = 0.9*0.9 + 0.1*0.8 = 0.81 + 0.08 = 0.89
-        when(admissionsClient.getStudentAllocationData(200L)).thenReturn(dateStudent(9.0f, "SANATOS"));
+        when(admissionsClient.getStudentAllocationData(200L)).thenReturn(dateStudent(9.0f, "SANATOS", "F", 400.0));
         // bac 8 → scor = 0.9*0.8 + 0.1*0.5 = 0.72 + 0.05 = 0.77
-        when(admissionsClient.getStudentAllocationData(300L)).thenReturn(dateStudent(8.0f, "SANATOS"));
+        when(admissionsClient.getStudentAllocationData(300L)).thenReturn(dateStudent(8.0f, "SANATOS", "M", 250.0));
         doNothing().when(dormitoryClient).bulkAllocate(any());
 
         service.runAllocation(1);
@@ -139,11 +139,11 @@ class DormitoryAlgorithmServiceTest {
     @Test
     void runAllocation_tipCameraCorectInListaTrimiса() {
         when(dormitoryClient.getPendingRequests(1)).thenReturn(List.of(
-                cerere(1, 1L, "M", 100.0),
-                cerere(2, 2L, "F", 100.0)
+                cerere(1, 1L),
+                cerere(2, 2L)
         ));
-        when(admissionsClient.getStudentAllocationData(1L)).thenReturn(dateStudent(8.0f, "SANATOS"));
-        when(admissionsClient.getStudentAllocationData(2L)).thenReturn(dateStudent(9.0f, "Handicap fizic"));
+        when(admissionsClient.getStudentAllocationData(1L)).thenReturn(dateStudent(8.0f, "SANATOS", "M", 100.0));
+        when(admissionsClient.getStudentAllocationData(2L)).thenReturn(dateStudent(9.0f, "Handicap fizic", "F", 100.0));
         doNothing().when(dormitoryClient).bulkAllocate(any());
 
         service.runAllocation(1);
@@ -166,10 +166,10 @@ class DormitoryAlgorithmServiceTest {
     @Test
     void runAllocation_eroareLaAdmissions_studentIgnorat() {
         when(dormitoryClient.getPendingRequests(1)).thenReturn(List.of(
-                cerere(1, 1L, "M", 200.0),
-                cerere(2, 2L, "F", 300.0)
+                cerere(1, 1L),
+                cerere(2, 2L)
         ));
-        when(admissionsClient.getStudentAllocationData(1L)).thenReturn(dateStudent(9.0f, "SANATOS"));
+        when(admissionsClient.getStudentAllocationData(1L)).thenReturn(dateStudent(9.0f, "SANATOS", "M", 200.0));
         // studentul 2 arunca exceptie (admissions-service down)
         when(admissionsClient.getStudentAllocationData(2L))
                 .thenThrow(new RuntimeException("admissions-service indisponibil"));
@@ -191,13 +191,13 @@ class DormitoryAlgorithmServiceTest {
     @Test
     void runAllocation_returneazaStatisticiCorecte() {
         when(dormitoryClient.getPendingRequests(5)).thenReturn(List.of(
-                cerere(1, 1L, "M", 100.0),
-                cerere(2, 2L, "F", 200.0),
-                cerere(3, 3L, "M", 300.0)
+                cerere(1, 1L),
+                cerere(2, 2L),
+                cerere(3, 3L)
         ));
-        when(admissionsClient.getStudentAllocationData(1L)).thenReturn(dateStudent(7.0f, "SANATOS"));
-        when(admissionsClient.getStudentAllocationData(2L)).thenReturn(dateStudent(8.0f, "SANATOS"));
-        when(admissionsClient.getStudentAllocationData(3L)).thenReturn(dateStudent(9.0f, "SANATOS"));
+        when(admissionsClient.getStudentAllocationData(1L)).thenReturn(dateStudent(7.0f, "SANATOS", "M", 100.0));
+        when(admissionsClient.getStudentAllocationData(2L)).thenReturn(dateStudent(8.0f, "SANATOS", "F", 200.0));
+        when(admissionsClient.getStudentAllocationData(3L)).thenReturn(dateStudent(9.0f, "SANATOS", "M", 300.0));
         doNothing().when(dormitoryClient).bulkAllocate(any());
 
         DormitoryAllocationResultDto result = service.runAllocation(5);

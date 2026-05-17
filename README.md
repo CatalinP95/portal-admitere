@@ -218,3 +218,61 @@ Sau, dacă user-service rulează: `http://localhost:8081/coverage/index.html`
 | `STUDENT` | Profil, anunțuri, depunere cerere admitere, cerere cămin |
 | `SECRETARIAT` | Gestionare cereri admitere, generare contracte PDF |
 | `ADMIN` | CRUD utilizatori, algoritm admitere, monitorizare, anunțuri |
+
+---
+
+## Design Patterns
+
+| Pattern | Unde este aplicat |
+|---|---|
+| **Strangler Fig** | Migrare graduală din aplicația monolitică (licenta) în microservicii — funcționalitățile vechi sunt înlocuite progresiv fără a opri sistemul |
+| **Repository** | Fiecare entitate JPA are propriul repository (`UserRepository`, `RefreshTokenRepository`) care izolează accesul la date față de logica de business |
+| **Circuit Breaker** | Resilience4j protejează user-service când admissions-service sau dormitory-service sunt indisponibile — cererile eșuate deschid circuitul și activează fallback-ul Feign |
+| **Strategy** | Algoritmul de admitere și cel de alocare cămin sunt strategii interschimbabile de ranking — formula de scor (pondere bac/distanță) poate fi înlocuită fără a modifica controlerul |
+| **API Gateway** | Punct unic de intrare care aplică autentificare JWT, rate limiting și load balancing înainte de a ruta cererile către microservicii |
+| **Fallback** | `AdmissionsClientFallback` și `DormitoryClientFallback` oferă răspunsuri degradate elegant când serviciile dependente nu răspund |
+
+---
+
+## AI Asistent — RoboAdmis
+
+Platforma include un chatbot integrat bazat pe **Groq API** (model `llama-3.1-8b-instant`), disponibil tuturor utilizatorilor autentificați.
+
+### Cum funcționează
+
+```
+Utilizator (Angular)
+      │  POST /api/chat/ask  {"message": "..."}
+      ▼
+API Gateway :8080
+      │
+      ▼
+user-service — ClaudeService
+      │  POST https://api.groq.com/openai/v1/chat/completions
+      ▼
+Groq API (Llama 3.1 8B)
+      │  {"reply": "..."}
+      ▼
+Utilizator — RoboAdmis 🤖
+```
+
+### Utilizare
+
+Butonul 🤖 apare în colțul dreapta-jos al oricărei pagini după autentificare. Candidații pot întreba despre:
+- Documente necesare pentru admitere
+- Medii minime pe facultăți
+- Termene și proceduri
+- Cereri de cazare în cămin
+
+### Configurare
+
+```bash
+# Setează cheia Groq ca variabilă de mediu (nu în cod)
+export GROQ_API_KEY=gsk_...
+
+# Sau în application-local.yml (gitignored)
+groq:
+  api-key: "gsk_..."
+```
+
+Endpoint: `POST /api/chat/ask` — necesită autentificare JWT.

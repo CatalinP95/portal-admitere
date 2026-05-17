@@ -39,3 +39,6 @@ application-local.properties
 ### OS
 .DS_Store
 Thumbs.db
+
+### Local tools (Maven descarcat de start-second-instance.ps1)
+.tools/

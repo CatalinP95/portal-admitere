@@ -49,8 +49,8 @@ public class DormitoryAlgorithmService {
             try {
                 StudentAllocationDataDto studentData =
                         admissionsClient.getStudentAllocationData(req.getUserId());
-                double score = computeScore(studentData.getAverageBac(), req.getDistanceKm());
-                int roomType = getRoomType(req.getSex(), studentData.getMedicalCondition());
+                double score = computeScore(studentData.getAverageBac(), studentData.getDistanceKm());
+                int roomType = getRoomType(studentData.getSex(), studentData.getMedicalCondition());
                 scored.add(new ScoredRequest(req.getBlockRequestId(), roomType, score));
             } catch (Exception e) {
                 log.warn("Nu s-au putut prelua datele pentru userId={}, cererea este ignorata: {}",

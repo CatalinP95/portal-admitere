@@ -1,0 +1,65 @@
+@if (isLoggedIn) {
+  <div class="chatbot-wrapper">
+
+    <!-- Fereastra chat -->
+    @if (isOpen()) {
+      <div class="chat-window">
+        <div class="chat-header">
+          <div class="robot-avatar">🤖</div>
+          <div class="header-info">
+            <span class="bot-name">RoboAdmis</span>
+            <span class="bot-status">● online</span>
+          </div>
+          <button class="close-btn" (click)="toggle()">✕</button>
+        </div>
+
+        <div class="messages" #messageList>
+          @for (msg of messages(); track $index) {
+            <div class="message" [class.user]="msg.role === 'user'" [class.bot]="msg.role === 'bot'">
+              @if (msg.role === 'bot') {
+                <span class="msg-avatar">🤖</span>
+              }
+              <div class="bubble">{{ msg.text }}</div>
+              @if (msg.role === 'user') {
+                <span class="msg-avatar user-avatar">👤</span>
+              }
+            </div>
+          }
+
+          @if (isLoading()) {
+            <div class="message bot">
+              <span class="msg-avatar">🤖</span>
+              <div class="bubble typing">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="chat-input-area">
+          <input
+            type="text"
+            class="chat-input"
+            placeholder="Scrie o întrebare..."
+            [value]="userInput()"
+            (input)="setInput($any($event.target).value)"
+            (keydown)="onEnter($event)"
+            [disabled]="isLoading()"
+          />
+          <button class="send-btn" (click)="send()" [disabled]="isLoading() || !userInput().trim()">
+            ➤
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Buton floating robot -->
+    <button class="robot-btn" (click)="toggle()" [class.open]="isOpen()" title="Asistent admitere">
+      <span class="robot-icon">🤖</span>
+      @if (!isOpen()) {
+        <span class="pulse-ring"></span>
+      }
+    </button>
+
+  </div>
+}
