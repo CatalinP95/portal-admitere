@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Angular CRUD, Paginare, Sortare, Filtrare – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout.err{border-color:#ef4444}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #4f46e5}
+    .step.gray{background:#1e293b;color:#94a3b8;border-color:#334155}
+    .arrow{color:#818cf8;font-size:1.4rem}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+    .checklist{list-style:none;margin:16px 0}
+    .checklist li{padding:8px 0;color:#cbd5e1;border-bottom:1px solid #1e293b;font-size:.92rem}
+    .checklist li::before{content:'✓ ';color:#10b981;font-weight:700}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>Angular CRUD, Paginare, Sortare &amp; Filtrare</h1>
+    <p>Child routing, Page&lt;T&gt;, debounced search, sortare pe coloane, polling cu RxJS</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ce s-a construit în Ziua 15</h2>
+    <p>Ziua 15 adaugă două module funcționale complete în dashboard: <strong>Anunțuri</strong> și <strong>Utilizatori</strong>. Ambele sunt pagini standalone lazy-loaded, montate ca child routes sub <code>/dashboard</code>, cu CRUD complet, paginare server-side, sortare pe coloane și filtrare cu debounce.</p>
+
+    <ul class="checklist">
+      <li>Child routing cu <code>RouterOutlet</code> — layout + conținut separat</li>
+      <li>Interfața generică <code>Page&lt;T&gt;</code> — aliniată cu Spring Data</li>
+      <li>AnnouncementsComponent — CRUD, filtrare tag, search titlu, sort, polling 30s</li>
+      <li>UsersComponent — CRUD, search username/email, filtru rol, sort coloane</li>
+      <li>Backend — <code>@Query</code> JPQL cu parametri opționali pentru filtrare</li>
+      <li>Sortare prin Spring <code>Pageable</code> — parametrul <code>?sort=field,dir</code></li>
+      <li>Debounced search cu RxJS <code>Subject</code> + <code>debounceTime</code></li>
+      <li>Polling cu <code>timer()</code> + <code>takeUntilDestroyed()</code></li>
+    </ul>
+
+    <h2>1. Arhitectura child routing</h2>
+    <p>Înainte de Ziua 15, <code>/dashboard</code> era o singură componentă cu navbar + conținut. Pentru a adăuga pagini noi fără a duplica navbar-ul, s-a restructurat în <strong>layout + child routes</strong>.</p>
+
+    <div class="flow">
+      <div class="step">/dashboard</div>
+      <div class="arrow">→</div>
+      <div class="step">DashboardComponent (layout: navbar + RouterOutlet)</div>
+    </div>
+    <div class="flow">
+      <div class="step">/dashboard</div><div class="arrow">→</div><div class="step gray">DashboardHomeComponent</div>
+      <div class="step">/dashboard/announcements</div><div class="arrow">→</div><div class="step gray">AnnouncementsComponent</div>
+      <div class="step">/dashboard/users</div><div class="arrow">→</div><div class="step gray">UsersComponent (ADMIN)</div>
+    </div>
+
+    <pre><code><span class="comment">// app.routes.ts</span>
+{
+  path: <span class="string">'dashboard'</span>,
+  canActivate: [authGuard],
+  loadComponent: () =&gt; <span class="keyword">import</span>(<span class="string">'./features/dashboard/dashboard'</span>).then(m =&gt; m.DashboardComponent),
+  children: [
+    {
+      path: <span class="string">''</span>,
+      loadComponent: () =&gt; <span class="keyword">import</span>(<span class="string">'./features/dashboard/home/home'</span>).then(m =&gt; m.DashboardHomeComponent)
+    },
+    {
+      path: <span class="string">'announcements'</span>,
+      loadComponent: () =&gt; <span class="keyword">import</span>(<span class="string">'./features/dashboard/announcements/announcements'</span>).then(m =&gt; m.AnnouncementsComponent)
+    },
+    {
+      path: <span class="string">'users'</span>,
+      canActivate: [roleGuard],
+      data: { roles: [<span class="string">'ADMIN'</span>] },
+      loadComponent: () =&gt; <span class="keyword">import</span>(<span class="string">'./features/dashboard/users/users'</span>).then(m =&gt; m.UsersComponent)
+    }
+  ]
+}</code></pre>
+
+    <p>Componenta <code>DashboardComponent</code> devine un simplu shell: navbar cu link-uri active + <code>&lt;router-outlet&gt;</code>. Conținutul fiecărei pagini se încarcă lazy în outlet.</p>
+
+    <pre><code><span class="comment">// dashboard.html (layout)</span>
+&lt;nav class=<span class="string">"navbar"</span>&gt;
+  &lt;a routerLink=<span class="string">"/dashboard"</span> routerLinkActive=<span class="string">"active"</span>
+     [routerLinkActiveOptions]=<span class="string">"{ exact: true }"</span> class=<span class="string">"nav-link"</span>&gt;Acasă&lt;/a&gt;
+  &lt;a routerLink=<span class="string">"/dashboard/announcements"</span> routerLinkActive=<span class="string">"active"</span> class=<span class="string">"nav-link"</span>&gt;Anunțuri&lt;/a&gt;
+  &lt;a *ngIf=<span class="string">"isAdmin"</span> routerLink=<span class="string">"/dashboard/users"</span> routerLinkActive=<span class="string">"active"</span> class=<span class="string">"nav-link"</span>&gt;Utilizatori&lt;/a&gt;
+&lt;/nav&gt;
+&lt;main class=<span class="string">"content"</span>&gt;
+  &lt;router-outlet&gt;&lt;/router-outlet&gt;
+&lt;/main&gt;</code></pre>
+
+    <div class="callout ok">
+      <p><strong>[routerLinkActiveOptions]="{ exact: true }"</strong> pe linkul Acasă este obligatoriu. Fără <code>exact</code>, Angular marchează ca <em>active</em> orice rută care <em>începe</em> cu <code>/dashboard</code> — inclusiv <code>/dashboard/announcements</code>.</p>
+    </div>
+
+    <h2>2. Interfața Page&lt;T&gt; — Spring Data Pageable</h2>
+    <p>Spring Data returnează un obiect <code>Page</code> cu câmpuri standard. Frontend-ul definește o interfață TypeScript generică aliniată exact cu răspunsul JSON.</p>
+
+    <pre><code><span class="comment">// core/models/page.model.ts</span>
+<span class="keyword">export interface</span> <span class="type">Page</span>&lt;T&gt; {
+  content:        T[];
+  totalElements:  <span class="keyword">number</span>;
+  totalPages:     <span class="keyword">number</span>;
+  number:         <span class="keyword">number</span>;   <span class="comment">// pagina curentă, 0-indexed</span>
+  size:           <span class="keyword">number</span>;
+  first:          <span class="keyword">boolean</span>;
+  last:           <span class="keyword">boolean</span>;
+  empty:          <span class="keyword">boolean</span>;
+}</code></pre>
+
+    <p>Backend-ul acceptă automat parametrii de paginare și sortare prin <code>Pageable</code>:</p>
+
+    <table>
+      <tr><th>Parametru URL</th><th>Efect</th></tr>
+      <tr><td><code>?page=0&amp;size=10</code></td><td>Prima pagină, 10 înregistrări</td></tr>
+      <tr><td><code>?sort=username,asc</code></td><td>Sortare după username crescător</td></tr>
+      <tr><td><code>?sort=createdAt,desc</code></td><td>Sortare după dată descrescător</td></tr>
+      <tr><td><code>?page=2&amp;size=10&amp;sort=email,asc</code></td><td>Combinat</td></tr>
+    </table>
+
+    <h2>3. Service cu parametri dinamici</h2>
+    <p>Serviciile folosesc <code>HttpParams</code> pentru a construi query string-ul dinamic, adăugând parametri opționali doar când există valori.</p>
+
+    <pre><code><span class="comment">// announcement.service.ts</span>
+getAll(
+  page = <span class="keyword">0</span>,
+  size = <span class="keyword">9</span>,
+  tag?: <span class="keyword">string</span>,
+  sort = <span class="string">'createdAt,desc'</span>,
+  search?: <span class="keyword">string</span>
+): <span class="type">Observable</span>&lt;<span class="type">Page</span>&lt;<span class="type">Announcement</span>&gt;&gt; {
+  <span class="keyword">let</span> params = <span class="keyword">new</span> <span class="type">HttpParams</span>()
+    .set(<span class="string">'page'</span>, page)
+    .set(<span class="string">'size'</span>, size)
+    .set(<span class="string">'sort'</span>, sort);
+  <span class="keyword">if</span> (tag)    params = params.set(<span class="string">'tag'</span>, tag);
+  <span class="keyword">if</span> (search) params = params.set(<span class="string">'search'</span>, search);
+  <span class="keyword">return</span> <span class="keyword">this</span>.http.get&lt;<span class="type">Page</span>&lt;<span class="type">Announcement</span>&gt;&gt;(<span class="keyword">this</span>.base, { params });
+}</code></pre>
+
+    <h2>4. Sortare pe coloane — click pe header</h2>
+    <p>Componenta menține starea sortării (<code>sortField</code> + <code>sortDir</code>) și construiește parametrul pentru backend la fiecare schimbare.</p>
+
+    <pre><code>sortField = <span class="string">'createdAt'</span>;
+sortDir: <span class="string">'asc'</span> | <span class="string">'desc'</span> = <span class="string">'desc'</span>;
+
+<span class="keyword">get</span> sortParam(): <span class="keyword">string</span> {
+  <span class="keyword">return</span> <span class="string">`${this.sortField},${this.sortDir}`</span>;
+}
+
+sort(field: <span class="keyword">string</span>): <span class="keyword">void</span> {
+  <span class="keyword">if</span> (<span class="keyword">this</span>.sortField === field) {
+    <span class="keyword">this</span>.sortDir = <span class="keyword">this</span>.sortDir === <span class="string">'asc'</span> ? <span class="string">'desc'</span> : <span class="string">'asc'</span>;
+  } <span class="keyword">else</span> {
+    <span class="keyword">this</span>.sortField = field;
+    <span class="keyword">this</span>.sortDir = <span class="string">'asc'</span>;
+  }
+  <span class="keyword">this</span>.currentPage = <span class="keyword">0</span>;
+  <span class="keyword">this</span>.load();
+}</code></pre>
+
+    <p>În template, header-ul de coloană afișează o săgeată care indică direcția curentă:</p>
+
+    <pre><code>&lt;th class=<span class="string">"sortable"</span> (click)=<span class="string">"sort('username')"</span>&gt;
+  Utilizator
+  &lt;span class=<span class="string">"sort-icon"</span> [class.active]=<span class="string">"sortField === 'username'"</span>&gt;
+    &lt;svg ...&gt;
+      &lt;polyline *ngIf=<span class="string">"sortField === 'username' &amp;&amp; sortDir === 'asc'"</span>
+                points=<span class="string">"18 15 12 9 6 15"</span>/&gt;  <span class="comment">&lt;!-- săgeată sus --&gt;</span>
+      &lt;polyline *ngIf=<span class="string">"sortField === 'username' &amp;&amp; sortDir === 'desc'"</span>
+                points=<span class="string">"6 9 12 15 18 9"</span>/&gt;   <span class="comment">&lt;!-- săgeată jos --&gt;</span>
+      &lt;polyline *ngIf=<span class="string">"sortField !== 'username'"</span>
+                points=<span class="string">"8 9 12 5 16 9"</span>/&gt;    <span class="comment">&lt;!-- neutru --&gt;</span>
+    &lt;/svg&gt;
+  &lt;/span&gt;
+&lt;/th&gt;</code></pre>
+
+    <h2>5. Debounced search cu RxJS Subject</h2>
+    <p>Fără debounce, fiecare tastă ar declanșa un request HTTP. Cu <code>Subject</code> + <code>debounceTime(400)</code>, request-ul se face abia după 400ms de pauză în tastare.</p>
+
+    <pre><code><span class="keyword">import</span> { Subject, debounceTime, distinctUntilChanged } <span class="keyword">from</span> <span class="string">'rxjs'</span>;
+<span class="keyword">import</span> { takeUntilDestroyed } <span class="keyword">from</span> <span class="string">'@angular/core/rxjs-interop'</span>;
+
+<span class="keyword">private</span> searchSubject = <span class="keyword">new</span> <span class="type">Subject</span>&lt;<span class="keyword">string</span>&gt;();
+<span class="keyword">private</span> destroyRef = inject(<span class="type">DestroyRef</span>);
+
+ngOnInit(): <span class="keyword">void</span> {
+  <span class="keyword">this</span>.load();
+
+  <span class="keyword">this</span>.searchSubject.pipe(
+    debounceTime(<span class="keyword">400</span>),
+    distinctUntilChanged(),
+    takeUntilDestroyed(<span class="keyword">this</span>.destroyRef)
+  ).subscribe(() =&gt; {
+    <span class="keyword">this</span>.currentPage = <span class="keyword">0</span>;
+    <span class="keyword">this</span>.load();
+  });
+}
+
+onSearch(term: <span class="keyword">string</span>): <span class="keyword">void</span> {
+  <span class="keyword">this</span>.searchTerm = term;
+  <span class="keyword">this</span>.searchSubject.next(term);
+}</code></pre>
+
+    <div class="callout ok">
+      <p><strong>takeUntilDestroyed(destroyRef)</strong> — oprește automat subscription-ul când componenta e distrusă (navigare la altă pagină). Fără el, subscription-ul rămâne activ și poate cauza memory leaks sau request-uri inutile.</p>
+    </div>
+
+    <h2>6. Polling automat cu timer()</h2>
+    <p>Anunțurile se reîncarcă automat la fiecare 30 de secunde, astfel încât un utilizator care stă pe pagină vede anunțurile noi adăugate de admin fără să dea refresh.</p>
+
+    <pre><code><span class="keyword">import</span> { timer } <span class="keyword">from</span> <span class="string">'rxjs'</span>;
+
+<span class="comment">// În ngOnInit, după load() inițial:</span>
+timer(<span class="keyword">30000</span>, <span class="keyword">30000</span>).pipe(
+  takeUntilDestroyed(<span class="keyword">this</span>.destroyRef)
+).subscribe(() =&gt; <span class="keyword">this</span>.load());</code></pre>
+
+    <p><code>timer(delay, interval)</code> — primul argument e delay-ul înainte de primul tick, al doilea e intervalul de repetiție. Cu <code>timer(30000, 30000)</code>: primul reload la 30s, apoi la fiecare 30s.</p>
+
+    <div class="callout warn">
+      <p><strong>De ce nu setInterval?</strong> <code>setInterval</code> nu e integrat cu RxJS și trebuie curățat manual în <code>ngOnDestroy</code>. <code>timer()</code> + <code>takeUntilDestroyed()</code> se curăță automat și sunt composable cu alți operatori RxJS.</p>
+    </div>
+
+    <h2>7. Backend — filtrare cu @Query JPQL</h2>
+    <p>Spring Data JPA permite filtrare cu parametri opționali prin <code>@Query</code> JPQL. Trucul este <code>(:param IS NULL OR condiție)</code> — dacă parametrul e null, condiția este ignorată.</p>
+
+    <pre><code><span class="comment">// UserRepository.java</span>
+<span class="annotation">@Query</span>(<span class="string">"SELECT u FROM User u WHERE "</span> +
+       <span class="string">"(:search IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) "</span> +
+       <span class="string">" OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%'))) "</span> +
+       <span class="string">"AND (:role IS NULL OR u.role = :role)"</span>)
+<span class="type">Page</span>&lt;<span class="type">User</span>&gt; findWithFilters(
+    <span class="annotation">@Param</span>(<span class="string">"search"</span>) <span class="type">String</span> search,
+    <span class="annotation">@Param</span>(<span class="string">"role"</span>) <span class="type">Role</span> role,
+    <span class="type">Pageable</span> pageable);</code></pre>
+
+    <p>Serviciul transformă string-urile goale în <code>null</code> înainte de a apela repository-ul:</p>
+
+    <pre><code><span class="keyword">public</span> <span class="type">Page</span>&lt;<span class="type">UserDto</span>&gt; findFiltered(<span class="type">String</span> search, <span class="type">String</span> roleStr, <span class="type">Pageable</span> pageable) {
+    <span class="type">String</span> searchParam = (search == <span class="keyword">null</span> || search.isBlank()) ? <span class="keyword">null</span> : search;
+    <span class="type">Role</span> roleParam   = (roleStr == <span class="keyword">null</span> || roleStr.isBlank()) ? <span class="keyword">null</span>
+                       : <span class="type">Role</span>.valueOf(roleStr.toUpperCase());
+    <span class="keyword">return</span> userRepository.findWithFilters(searchParam, roleParam, pageable)
+                          .map(<span class="type">UserDto</span>::from);
+}</code></pre>
+
+    <div class="callout ok">
+      <p><strong>Sortarea vine automat prin Pageable</strong> — nu trebuie specificată în <code>@Query</code>. Spring Data aplică <code>ORDER BY</code> bazat pe <code>?sort=field,direction</code> din URL, indiferent de query-ul de filtrare.</p>
+    </div>
+
+    <h2>8. Filtrare anunțuri cu JOIN pe tags</h2>
+    <p>Anunțurile au o relație <code>@ManyToMany</code> cu taguri. Filtrarea după tag necesită JOIN și <code>DISTINCT</code> pentru a evita duplicatele (un anunț cu mai multe taguri ar apărea de mai multe ori fără DISTINCT).</p>
+
+    <pre><code><span class="annotation">@Query</span>(
+  value = <span class="string">"SELECT DISTINCT a FROM Announcement a LEFT JOIN a.tags t WHERE a.enabled = true "</span> +
+          <span class="string">"AND (:tag IS NULL OR t.name = :tag) "</span> +
+          <span class="string">"AND (:search IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%', :search, '%')))"</span>,
+  countQuery = <span class="string">"SELECT COUNT(DISTINCT a.id) FROM Announcement a LEFT JOIN a.tags t "</span> +
+               <span class="string">"WHERE a.enabled = true "</span> +
+               <span class="string">"AND (:tag IS NULL OR t.name = :tag) "</span> +
+               <span class="string">"AND (:search IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%', :search, '%')))"</span>
+)
+<span class="type">Page</span>&lt;<span class="type">Announcement</span>&gt; findWithFilters(
+    <span class="annotation">@Param</span>(<span class="string">"tag"</span>) <span class="type">String</span> tag,
+    <span class="annotation">@Param</span>(<span class="string">"search"</span>) <span class="type">String</span> search,
+    <span class="type">Pageable</span> pageable);</code></pre>
+
+    <div class="callout warn">
+      <p><strong>countQuery separat</strong> — Spring Data JPA nu poate deriva automat query-ul de numărare din query-uri cu <code>DISTINCT</code> + <code>JOIN</code>. Fără <code>countQuery</code>, paginarea returnează <code>totalPages</code> greșit.</p>
+    </div>
+
+    <h2>9. ChangeDetectorRef — pattern obligatoriu</h2>
+    <p>Un comportament specific acestui proiect: Angular nu detectează automat schimbările de stare când callback-urile HTTP se execută în afara zonei Angular. Soluția este <code>cdr.detectChanges()</code> explicit în <code>next</code> și <code>error</code>.</p>
+
+    <pre><code>load(): <span class="keyword">void</span> {
+  <span class="keyword">this</span>.loading = <span class="keyword">true</span>;
+  <span class="keyword">this</span>.service.getAll(...).subscribe({
+    next: p =&gt; {
+      <span class="keyword">this</span>.page = p;
+      <span class="keyword">this</span>.loading = <span class="keyword">false</span>;
+      <span class="keyword">this</span>.cdr.detectChanges(); <span class="comment">// ← fără asta, spinner-ul rămâne</span>
+    },
+    error: () =&gt; {
+      <span class="keyword">this</span>.error = <span class="string">'Eroare.'</span>;
+      <span class="keyword">this</span>.loading = <span class="keyword">false</span>;
+      <span class="keyword">this</span>.cdr.detectChanges();
+    }
+  });
+}</code></pre>
+
+    <div class="callout err">
+      <p><strong>Simptom fără detectChanges:</strong> request HTTP returnează 200, datele ajung în componentă (<code>this.page = p</code>), dar UI-ul rămâne pe spinner la infinit. Adăugarea lui <code>cdr.detectChanges()</code> rezolvă imediat.</p>
+    </div>
+
+    <h2>10. Pattern modal — submit fără race condition</h2>
+    <p>Ordinea operațiilor în callback-ul <code>next</code> al submit-ului este critică: întâi închidem modalul și forțăm detectarea schimbării, apoi apelăm <code>load()</code>. Dacă inversăm ordinea, <code>cdr.detectChanges()</code> din <code>load()</code> s-ar executa înainte ca modalul să fie vizual închis.</p>
+
+    <pre><code>op$.subscribe({
+  next: () =&gt; {
+    <span class="keyword">this</span>.showModal = <span class="keyword">false</span>;      <span class="comment">// 1. ascunde modalul</span>
+    <span class="keyword">this</span>.editingId = <span class="keyword">null</span>;
+    <span class="keyword">this</span>.modalLoading = <span class="keyword">false</span>;
+    <span class="keyword">this</span>.cdr.detectChanges();     <span class="comment">// 2. render fără modal</span>
+    <span class="keyword">this</span>.load();                   <span class="comment">// 3. reîncarcă lista</span>
+  },
+  error: err =&gt; {
+    <span class="keyword">this</span>.modalError = <span class="string">'Eroare.'</span>;
+    <span class="keyword">this</span>.modalLoading = <span class="keyword">false</span>;
+    <span class="keyword">this</span>.cdr.detectChanges();
+  }
+});</code></pre>
+
+    <h2>Întrebări frecvente</h2>
+
+    <div class="qa-block">
+      <p class="qa-q">De ce e nevoie de <code>countQuery</code> separat în @Query cu DISTINCT?</p>
+      <p class="qa-a">Spring Data JPA derivă automat query-ul de numărare din cel principal, dar nu știe să genereze <code>COUNT(DISTINCT)</code> pentru query-uri complexe cu <code>JOIN</code>. Fără <code>countQuery</code>, ar număra rândurile din JOIN (cu duplicate), returnând <code>totalElements</code> și <code>totalPages</code> greșite.</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">De ce <code>debounceTime(400)</code> și nu <code>debounceTime(300)</code> sau <code>1000</code>?</p>
+      <p class="qa-a">400ms e empiric optimul perceput ca "responsiv" fără să facă request la fiecare tastă. Sub 300ms utilizatorul simte că face prea multe request-uri. Peste 600ms percepe lagul. 400ms e valoarea standard folosită în majoritatea aplicațiilor enterprise.</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">De ce <code>LEFT JOIN</code> în loc de <code>INNER JOIN</code> pentru tags?</p>
+      <p class="qa-a">Cu <code>INNER JOIN</code>, anunțurile fără niciun tag ar dispărea din rezultate chiar dacă nu filtrăm după tag. <code>LEFT JOIN</code> păstrează toate anunțurile și condiția <code>(:tag IS NULL OR t.name = :tag)</code> le filtrează corect: dacă <code>:tag</code> e null, condiția e mereu adevărată, deci apare tot.</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">Ce face <code>takeUntilDestroyed(destroyRef)</code>?</p>
+      <p class="qa-a">Completează automat un Observable când componenta Angular e distrusă (navigare la altă pagină, *ngIf false). Fără el, un <code>timer()</code> sau <code>Subject</code> rămâne activ în memorie după ce componenta dispare. <code>destroyRef</code> se injectează cu <code>inject(DestroyRef)</code> și poate fi folosit în orice context (nu doar constructor).</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">Care e diferența între <code>timer(30000, 30000)</code> și <code>interval(30000)</code>?</p>
+      <p class="qa-a"><code>interval(30000)</code> emite primul tick după 30s. <code>timer(30000, 30000)</code> face exact același lucru, dar permite specificarea unui delay inițial diferit de interval. De exemplu, <code>timer(5000, 30000)</code> face primul reload la 5s, apoi la fiecare 30s. Pentru polling, <code>timer</code> e mai flexibil.</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">Cum funcționează paginarea când filtrele se schimbă?</p>
+      <p class="qa-a">Când utilizatorul schimbă un filtru (search, tag, rol), <code>currentPage</code> se resetează la <code>0</code> înainte de apelarea <code>load()</code>. Fără reset, dacă ești pe pagina 3 și schimbi filtrul, ar cere pagina 3 din noul set de rezultate — care poate avea mai puțin de 3 pagini, returnând un <code>content: []</code> gol.</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">De ce child routes și nu pagini separate cu navbar duplicat?</p>
+      <p class="qa-a">Child routes cu RouterOutlet evită duplicarea navbar-ului în fiecare componentă. Navbar-ul e instanțiat o singură dată în DashboardComponent (layout) și persistă între navigări. Beneficiu suplimentar: Angular nu recreează componenta layout la navigare între child routes — starea userului (username, rol) e citită o singură dată.</p>
+    </div>
+
+    <div class="qa-block">
+      <p class="qa-q">De ce se folosește <code>:search IS NULL OR ...</code> în JPQL și nu <code>COALESCE</code>?</p>
+      <p class="qa-a">În JPQL, <code>COALESCE(:search, '')</code> nu funcționează consistent pentru comparații LIKE în toate implementările Hibernate. Pattern-ul <code>(:param IS NULL OR condiție)</code> este portabil, clar și funcționează corect — Hibernate îl optimizează la nivel de SQL când parametrul e null.</p>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — CRUD cu Paginare, Sortare și Filtrare</h2>
+
+<div class="callout" style="background:#0f1a2e;border-left:4px solid #60a5fa;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Dashboard cu layout și child routing configurat (Tutorial 14). Backend endpoint paginat cu Page&lt;T&gt; (Tutorial 04).</p>
+</div>
+
+<div style="background:#0f1a2e;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#60a5fa">Pasul 1 — Creează interfața TypeScript pentru Page&lt;T&gt;</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>src/app/models/page.model.ts</code>:</p>
+    <pre><code>export interface Page&lt;T&gt; {
+  content: T[];          // elementele paginii curente
+  totalElements: number; // total recorduri în DB
+  totalPages: number;    // total pagini
+  number: number;        // pagina curentă (0-indexed)
+  size: number;          // dimensiunea paginii
+  first: boolean;
+  last: boolean;
+}</code></pre>
+    <p>Creează <code>src/app/models/user.model.ts</code>:</p>
+    <pre><code>export interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: 'ADMIN' | 'SECRETARIAT' | 'STUDENT';
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f1a2e;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#60a5fa">Pasul 2 — Creează Service cu HttpParams pentru paginare</strong>
+  <div style="margin-top:12px">
+    <pre><code>@Injectable({ providedIn: 'root' })
+export class UserAdminService {
+  private url = `${environment.apiUrl}/api/users`;
+
+  constructor(private http: HttpClient) {}
+
+  getUsers(params: {
+    page: number, size: number,
+    sort: string, direction: 'asc' | 'desc',
+    search?: string
+  }): Observable&lt;Page&lt;User&gt;&gt; {
+    let httpParams = new HttpParams()
+      .set('page', params.page)
+      .set('size', params.size)
+      .set('sort', `${params.sort},${params.direction}`);
+
+    if (params.search) {
+      httpParams = httpParams.set('search', params.search);
+    }
+
+    return this.http.get&lt;Page&lt;User&gt;&gt;(this.url, { params: httpParams });
+  }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f1a2e;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#60a5fa">Pasul 3 — Creează Component cu search debounced și sortare</strong>
+  <div style="margin-top:12px">
+    <pre><code>@Component({ standalone: true, imports: [CommonModule, FormsModule], ... })
+export class UsersComponent implements OnInit, OnDestroy {
+  users: User[] = [];
+  page = 0; size = 10; totalPages = 0;
+  sortField = 'username'; sortDir: 'asc'|'desc' = 'asc';
+  search = '';
+
+  // Subject pentru debounce la search — emite la fiecare keystroke
+  private searchSubject = new Subject&lt;string&gt;();
+  private sub = new Subscription();
+
+  constructor(private userService: UserAdminService) {}
+
+  ngOnInit() {
+    // debounceTime(400): așteaptă 400ms de pauză între taste înainte de a trimite requestul
+    this.sub.add(
+      this.searchSubject.pipe(debounceTime(400), distinctUntilChanged())
+        .subscribe(() => { this.page = 0; this.load(); })
+    );
+    this.load();
+  }
+
+  load() {
+    this.userService.getUsers({
+      page: this.page, size: this.size,
+      sort: this.sortField, direction: this.sortDir,
+      search: this.search || undefined
+    }).subscribe(data => {
+      this.users = data.content;
+      this.totalPages = data.totalPages;
+    });
+  }
+
+  onSearchChange(val: string) {
+    this.search = val;
+    this.searchSubject.next(val);   // trimite la Subject, nu direct la server
+  }
+
+  sort(field: string) {
+    if (this.sortField === field) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field; this.sortDir = 'asc';
+    }
+    this.load();
+  }
+
+  ngOnDestroy() { this.sub.unsubscribe(); }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f1a2e;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#60a5fa">Pasul 4 — Template HTML cu tabel sortabil și paginare</strong>
+  <div style="margin-top:12px">
+    <pre><code>&lt;input [ngModel]="search" (ngModelChange)="onSearchChange($event)"
+       placeholder="Caută utilizator..."&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th (click)="sort('username')"&gt;
+        Username
+        &lt;span *ngIf="sortField==='username'"&gt;{{ sortDir === 'asc' ? '↑' : '↓' }}&lt;/span&gt;
+      &lt;/th&gt;
+      &lt;th (click)="sort('email')"&gt;Email&lt;/th&gt;
+      &lt;th&gt;Rol&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr *ngFor="let user of users"&gt;
+      &lt;td&gt;{{ user.username }}&lt;/td&gt;
+      &lt;td&gt;{{ user.email }}&lt;/td&gt;
+      &lt;td&gt;{{ user.role }}&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;button [disabled]="page === 0" (click)="page=page-1; load()"&gt;← Anterior&lt;/button&gt;
+&lt;span&gt;Pagina {{ page + 1 }} din {{ totalPages }}&lt;/span&gt;
+&lt;button [disabled]="page === totalPages-1" (click)="page=page+1; load()"&gt;Următor →&lt;/button&gt;</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Deschide <code>http://localhost:4300/dashboard/users</code>. Testează:</p>
+  <ul style="color:#cbd5e1;padding-left:20px;margin-top:8px">
+    <li>Scrie în search-bar → requestul se trimite după 400ms de pauză (nu la fiecare tastă)</li>
+    <li>Click pe header coloană → lista se re-sortează, click din nou → inversează direcția</li>
+    <li>Butoanele de paginare → navighează între pagini</li>
+    <li>F12 → Network → parametrii URL: <code>?page=0&amp;size=10&amp;sort=username,asc&amp;search=ion</code></li>
+  </ul>
+</div>
+</div>
+
+  <footer>Portal Admitere &copy; 2026 – Proiect licență AMSS</footer>
+</body>
+</html>

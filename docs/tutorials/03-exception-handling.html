@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Exception Handling – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#7f1d1d,#b91c1c);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#fecaca;margin-top:8px;font-size:1.05rem}
+    .container{max-width:900px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#f87171;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#fca5a5;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #f87171;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#450a0a;color:#fca5a5;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #7f1d1d}
+    .arrow{color:#f87171;font-size:1.4rem}
+    .resp{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;margin:16px 0;font-family:monospace;font-size:.88rem}
+    .resp .key{color:#a5b4fc}
+    .resp .val{color:#fbbf24}
+    .resp .val-str{color:#34d399}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#f87171;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    .http-404{color:#f87171;font-weight:700}
+    .http-400{color:#fb923c;font-weight:700}
+    .http-500{color:#a855f7;font-weight:700}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#f87171;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #b91c1c;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>🚨 Exception Handling</h1>
+    <p>Gestionarea excepțiilor specifice per entitate cu @RestControllerAdvice</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Problema: excepții generice</h2>
+    <p>Fără o strategie clară, Spring returnează erori generice <code>500 Internal Server Error</code> chiar și pentru cazuri simple cum ar fi un user inexistent. Clientul nu știe ce s-a întâmplat.</p>
+
+    <div class="callout">
+      <p><strong>Soluție:</strong> Excepții dedicate per entitate + un handler global care le prinde și returnează răspunsuri JSON structurate cu cod HTTP corect.</p>
+    </div>
+
+    <h2>Fluxul de tratare a erorilor</h2>
+    <div class="flow">
+      <div class="step">Service aruncă UserNotFoundException</div>
+      <span class="arrow">→</span>
+      <div class="step">GlobalExceptionHandler prinde excepția</div>
+      <span class="arrow">→</span>
+      <div class="step">Returnează 404 + ErrorResponse JSON</div>
+    </div>
+
+    <h2>ErrorResponse – structura răspunsului</h2>
+    <p>Toate erorile returnează același format JSON, consistent pentru frontend.</p>
+
+    <pre><code><span class="comment">// ErrorResponse.java</span>
+<span class="keyword">public class</span> <span class="type">ErrorResponse</span> {
+    <span class="keyword">private final</span> String code;       <span class="comment">// ex: "USER_NOT_FOUND"</span>
+    <span class="keyword">private final</span> String message;    <span class="comment">// ex: "User not found: 99"</span>
+    <span class="keyword">private final</span> LocalDateTime timestamp;  <span class="comment">// momentul erorii</span>
+
+    <span class="keyword">public</span> <span class="type">ErrorResponse</span>(String code, String message) {
+        <span class="keyword">this</span>.code = code;
+        <span class="keyword">this</span>.message = message;
+        <span class="keyword">this</span>.timestamp = LocalDateTime.now();
+    }
+
+    <span class="comment">// getters...</span>
+}</code></pre>
+
+    <p>Răspuns JSON returnat clientului:</p>
+    <div class="resp">
+      {<br/>
+      &nbsp;&nbsp;<span class="key">"code"</span>: <span class="val-str">"USER_NOT_FOUND"</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"message"</span>: <span class="val-str">"User not found: 99"</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"timestamp"</span>: <span class="val-str">"2026-05-12T14:30:00"</span><br/>
+      }
+    </div>
+
+    <h2>Excepții specifice per entitate</h2>
+
+    <h3>UserNotFoundException</h3>
+    <pre><code><span class="keyword">public class</span> <span class="type">UserNotFoundException</span> <span class="keyword">extends</span> RuntimeException {
+
+    <span class="comment">// caută după ID numeric</span>
+    <span class="keyword">public</span> <span class="type">UserNotFoundException</span>(Long id) {
+        <span class="keyword">super</span>(<span class="string">"User not found: "</span> + id);
+    }
+
+    <span class="comment">// caută după username string</span>
+    <span class="keyword">public</span> <span class="type">UserNotFoundException</span>(String username) {
+        <span class="keyword">super</span>(<span class="string">"User not found: "</span> + username);
+    }
+}</code></pre>
+
+    <h3>AnnouncementNotFoundException</h3>
+    <pre><code><span class="keyword">public class</span> <span class="type">AnnouncementNotFoundException</span> <span class="keyword">extends</span> RuntimeException {
+    <span class="keyword">public</span> <span class="type">AnnouncementNotFoundException</span>(Long id) {
+        <span class="keyword">super</span>(<span class="string">"Announcement not found: "</span> + id);
+    }
+}</code></pre>
+
+    <h3>TagNotFoundException și AlgorithmException</h3>
+    <pre><code><span class="keyword">public class</span> <span class="type">TagNotFoundException</span> <span class="keyword">extends</span> RuntimeException {
+    <span class="keyword">public</span> <span class="type">TagNotFoundException</span>(String name) {
+        <span class="keyword">super</span>(<span class="string">"Tag not found: "</span> + name);
+    }
+}
+
+<span class="keyword">public class</span> <span class="type">AlgorithmException</span> <span class="keyword">extends</span> RuntimeException {
+    <span class="keyword">public</span> <span class="type">AlgorithmException</span>(String message) {
+        <span class="keyword">super</span>(message);
+    }
+}</code></pre>
+
+    <h2>GlobalExceptionHandler – handler-ul central</h2>
+    <p><code>@RestControllerAdvice</code> permite interceptarea excepțiilor din orice controller Spring și returnarea unui răspuns personalizat.</p>
+
+    <pre><code><span class="annotation">@RestControllerAdvice</span>
+<span class="keyword">public class</span> <span class="type">GlobalExceptionHandler</span> {
+
+    <span class="annotation">@ExceptionHandler</span>(UserNotFoundException.class)
+    <span class="keyword">public</span> ResponseEntity&lt;ErrorResponse&gt; handleUserNotFound(UserNotFoundException e) {
+        <span class="keyword">return</span> ResponseEntity
+            .status(404)
+            .body(<span class="keyword">new</span> <span class="type">ErrorResponse</span>(<span class="string">"USER_NOT_FOUND"</span>, e.getMessage()));
+    }
+
+    <span class="annotation">@ExceptionHandler</span>(AnnouncementNotFoundException.class)
+    <span class="keyword">public</span> ResponseEntity&lt;ErrorResponse&gt; handleAnnouncementNotFound(AnnouncementNotFoundException e) {
+        <span class="keyword">return</span> ResponseEntity
+            .status(404)
+            .body(<span class="keyword">new</span> <span class="type">ErrorResponse</span>(<span class="string">"ANNOUNCEMENT_NOT_FOUND"</span>, e.getMessage()));
+    }
+
+    <span class="annotation">@ExceptionHandler</span>(TagNotFoundException.class)
+    <span class="keyword">public</span> ResponseEntity&lt;ErrorResponse&gt; handleTagNotFound(TagNotFoundException e) {
+        <span class="keyword">return</span> ResponseEntity
+            .status(404)
+            .body(<span class="keyword">new</span> <span class="type">ErrorResponse</span>(<span class="string">"TAG_NOT_FOUND"</span>, e.getMessage()));
+    }
+
+    <span class="annotation">@ExceptionHandler</span>(AlgorithmException.class)
+    <span class="keyword">public</span> ResponseEntity&lt;ErrorResponse&gt; handleAlgorithmException(AlgorithmException e) {
+        <span class="keyword">return</span> ResponseEntity
+            .status(500)
+            .body(<span class="keyword">new</span> <span class="type">ErrorResponse</span>(<span class="string">"ALGORITHM_ERROR"</span>, e.getMessage()));
+    }
+
+    <span class="comment">// prinde orice altă excepție neașteptată</span>
+    <span class="annotation">@ExceptionHandler</span>(Exception.class)
+    <span class="keyword">public</span> ResponseEntity&lt;ErrorResponse&gt; handleGeneric(Exception e) {
+        <span class="keyword">return</span> ResponseEntity
+            .status(500)
+            .body(<span class="keyword">new</span> <span class="type">ErrorResponse</span>(<span class="string">"INTERNAL_ERROR"</span>, <span class="string">"An unexpected error occurred"</span>));
+    }
+}</code></pre>
+
+    <h2>Cum aruncăm excepțiile în Service</h2>
+    <pre><code><span class="comment">// UserService.java</span>
+<span class="keyword">public</span> UserDto findById(Long id) {
+    <span class="keyword">return</span> userRepository.findById(id)
+        .map(UserDto::from)
+        .orElseThrow(() -&gt; <span class="keyword">new</span> <span class="type">UserNotFoundException</span>(id));
+}
+
+<span class="comment">// AnnouncementService.java</span>
+<span class="keyword">public</span> AnnouncementDto update(Long id, AnnouncementRequest request) {
+    Announcement announcement = announcementRepository.findById(id)
+        .orElseThrow(() -&gt; <span class="keyword">new</span> <span class="type">AnnouncementNotFoundException</span>(id));
+    <span class="comment">// ... actualizare...</span>
+}</code></pre>
+
+    <h2>Coduri HTTP folosite</h2>
+    <table>
+      <tr><th>Excepție</th><th>Cod HTTP</th><th>Cod eroare</th></tr>
+      <tr><td>UserNotFoundException</td><td class="http-404">404 Not Found</td><td>USER_NOT_FOUND</td></tr>
+      <tr><td>AnnouncementNotFoundException</td><td class="http-404">404 Not Found</td><td>ANNOUNCEMENT_NOT_FOUND</td></tr>
+      <tr><td>TagNotFoundException</td><td class="http-404">404 Not Found</td><td>TAG_NOT_FOUND</td></tr>
+      <tr><td>AlgorithmException</td><td class="http-500">500 Internal</td><td>ALGORITHM_ERROR</td></tr>
+      <tr><td>Exception (generic)</td><td class="http-500">500 Internal</td><td>INTERNAL_ERROR</td></tr>
+    </table>
+
+    <h2>Test JUnit pentru excepții</h2>
+    <pre><code><span class="annotation">@Test</span>
+<span class="keyword">void</span> findById_throwsUserNotFound_whenNotExists() {
+    <span class="comment">// when + then</span>
+    assertThrows(
+        <span class="type">UserNotFoundException</span>.class,
+        () -&gt; userService.findById(99L)
+    );
+}
+
+<span class="annotation">@Test</span>
+<span class="keyword">void</span> update_throwsAnnouncementNotFound_whenNotExists() {
+    assertThrows(
+        <span class="type">AnnouncementNotFoundException</span>.class,
+        () -&gt; announcementService.update(999L, request)
+    );
+}</code></pre>
+
+    <div class="callout ok">
+      <p><strong>Avantaje față de excepții generice:</strong><br/>
+      ✓ Frontend primește cod HTTP și mesaj clar<br/>
+      ✓ Logging consistent (poți logga la nivel de handler)<br/>
+      ✓ Ușor de extins cu noi tipuri de erori<br/>
+      ✓ Testele pot verifica tipul exact de excepție aruncat</p>
+    </div>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face @RestControllerAdvice și cum diferă de @ControllerAdvice?</div>
+      <div class="qa-a"><code>@RestControllerAdvice = @ControllerAdvice + @ResponseBody</code>. Interceptează excepțiile aruncate din orice controller Spring și permite returnarea unui răspuns JSON personalizat. Fără <code>@ResponseBody</code>, Spring ar încerca să randeze un view (Thymeleaf/JSP). Cu <code>@RestControllerAdvice</code>, metoda returnează direct obiectul Java serializat ca JSON.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce excepțiile noastre extind RuntimeException și nu Exception?</div>
+      <div class="qa-a"><code>RuntimeException</code> este „unchecked" — compilatorul nu obligă metodele care o aruncă să o declare în semnătură (<code>throws UserNotFoundException</code>). Dacă am extinde <code>Exception</code> (checked), fiecare metodă care apelează <code>userRepository.findById()</code> și aruncă excepția ar trebui să declare <code>throws UserNotFoundException</code> în semnătură — cod verbos și inutil în aplicații Spring.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce cod HTTP returnezi când o resursă nu există? Dar pentru date invalide?</div>
+      <div class="qa-a"><strong>404 Not Found</strong> — resursa cerută nu există (UserNotFoundException, AnnouncementNotFoundException). <strong>400 Bad Request</strong> — datele trimise de client sunt invalide (lipsesc câmpuri obligatorii, format incorect). <strong>422 Unprocessable Entity</strong> — structura JSON e corectă dar valorile sunt invalide (alternativă la 400). <strong>500 Internal Server Error</strong> — erori neașteptate de server (AlgorithmException, NullPointerException).</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum funcționează @ExceptionHandler și cine îl apelează?</div>
+      <div class="qa-a">Când o metodă de controller (sau de service, propagată prin controller) aruncă o excepție, Spring interceptează excepția înainte de a trimite răspunsul HTTP. Caută în <code>@RestControllerAdvice</code> o metodă adnotată cu <code>@ExceptionHandler(TipulExceptiei.class)</code> care corespunde tipului excepției. Dacă găsește, o apelează; altfel caută pentru superclase. Metoda cu <code>@ExceptionHandler(Exception.class)</code> este fallback-ul pentru orice excepție neprinse.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce structură are ErrorResponse și de ce includem timestamp?</div>
+      <div class="qa-a"><code>ErrorResponse</code> conține: <strong>code</strong> (identificator string pentru tipul erorii, ex: <code>USER_NOT_FOUND</code>), <strong>message</strong> (detalii human-readable, ex: <code>User not found: 99</code>), <strong>timestamp</strong> (<code>LocalDateTime.now()</code> — momentul erorii). Timestamp-ul ajută la corelarea erorii cu log-urile serverului și este util pentru debugging și audit.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum verifici în teste că o excepție specifică este aruncată?</div>
+      <div class="qa-a">Se folosește <code>assertThrows(TipExceptie.class, () -&gt; metoda())</code> din JUnit 5. Exemplu: <code>assertThrows(UserNotFoundException.class, () -&gt; userService.findById(99L))</code>. Dacă metoda nu aruncă excepția sau aruncă un tip diferit, testul eșuează. Poți și captura excepția: <code>var ex = assertThrows(...)</code> și apoi verifica mesajul cu <code>assertTrue(ex.getMessage().contains("99"))</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Care e avantajul excepțiilor specifice față de if/else + ResponseEntity direct în controller?</div>
+      <div class="qa-a">Cu excepții specifice: <strong>separarea responsabilităților</strong> — service-ul nu știe de HTTP, aruncă doar excepții de business. <strong>DRY</strong> — tratarea erorii e o singură dată în GlobalExceptionHandler. <strong>Testabilitate</strong> — testele de service verifică excepțiile, independent de HTTP. Alternativa (return ResponseEntity.notFound() din service) cuplează stratul de business cu HTTP și face testele mai complexe.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Exception Handling</h2>
+
+<div class="callout" style="background:#1c0607;border-left:4px solid #f87171;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Microserviciul Spring Boot cu cel puțin un model și un service (Tutorial 00 + 02).</p>
+</div>
+
+<div style="background:#1c0b0b;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 1 — Creează clasa ErrorResponse</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>exception/ErrorResponse.java</code> — aceasta este structura JSON returnată la erori:</p>
+    <pre><code>public class ErrorResponse {
+    private String code;        // ex: "USER_NOT_FOUND"
+    private String message;     // ex: "User not found: 99"
+    private LocalDateTime timestamp;
+
+    public ErrorResponse(String code, String message) {
+        this.code = code;
+        this.message = message;
+        this.timestamp = LocalDateTime.now();
+    }
+    // getters
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0b0b;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 2 — Creează excepții specifice</strong>
+  <div style="margin-top:12px">
+    <p>Creează câte un fișier pentru fiecare entitate principală în folderul <code>exception/</code>:</p>
+    <pre><code>// exception/UserNotFoundException.java
+public class UserNotFoundException extends RuntimeException {
+    public UserNotFoundException(Long id) {
+        super("User not found: " + id);
+    }
+    public UserNotFoundException(String username) {
+        super("User not found: " + username);
+    }
+}</code></pre>
+    <pre><code>// exception/DuplicateEmailException.java
+public class DuplicateEmailException extends RuntimeException {
+    public DuplicateEmailException(String email) {
+        super("Email already in use: " + email);
+    }
+}</code></pre>
+    <p>Creează câte o excepție similară pentru fiecare entitate: <code>AnnouncementNotFoundException</code>, <code>ProfileNotFoundException</code> etc.</p>
+  </div>
+</div>
+
+<div style="background:#1c0b0b;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 3 — Creează GlobalExceptionHandler</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>exception/GlobalExceptionHandler.java</code>:</p>
+    <pre><code>@RestControllerAdvice  // interceptează excepțiile din toți controller-ii
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleUserNotFound(UserNotFoundException e) {
+        return ResponseEntity.status(404)
+                .body(new ErrorResponse("USER_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleDuplicateEmail(DuplicateEmailException e) {
+        return ResponseEntity.status(409)
+                .body(new ErrorResponse("DUPLICATE_EMAIL", e.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleAccessDenied(AccessDeniedException e) {
+        return ResponseEntity.status(403)
+                .body(new ErrorResponse("ACCESS_DENIED", "Nu ai permisiunea pentru această acțiune"));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleValidation(MethodArgumentNotValidException e) {
+        String msg = e.getBindingResult().getFieldErrors().stream()
+                .map(f -> f.getField() + ": " + f.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        return ResponseEntity.status(400).body(new ErrorResponse("VALIDATION_ERROR", msg));
+    }
+
+    @ExceptionHandler(Exception.class)  // catch-all pentru excepții neprevăzute
+    public ResponseEntity&lt;ErrorResponse&gt; handleGeneral(Exception e) {
+        return ResponseEntity.status(500)
+                .body(new ErrorResponse("INTERNAL_ERROR", "Eroare internă a serverului"));
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0b0b;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 4 — Folosește excepțiile în Service</strong>
+  <div style="margin-top:12px">
+    <p>În loc să returnezi <code>null</code> sau <code>Optional</code> gol din service, aruncă excepțiile:</p>
+    <pre><code>@Service
+public class UserService {
+
+    public UserDto findById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));  // aruncă excepție specifică
+        return UserDto.from(user);
+    }
+
+    public UserDto create(CreateUserRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException(request.email());
+        }
+        // ... creare user
+    }
+}</code></pre>
+    <p>Controller-ul rămâne curat — nu gestionează erori:</p>
+    <pre><code>@GetMapping("/{id}")
+public ResponseEntity&lt;UserDto&gt; getById(@PathVariable Long id) {
+    return ResponseEntity.ok(userService.findById(id));  // excepția e gestionată de GlobalExceptionHandler
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Pornește aplicația și trimite GET la <code>http://localhost:8081/api/users/9999</code> (ID inexistent).</p>
+  <p>Răspunsul trebuie să fie <strong>404</strong> cu body:</p>
+  <pre><code>{"code": "USER_NOT_FOUND", "message": "User not found: 9999", "timestamp": "2026-05-16T..."}</code></pre>
+  <p>Fără GlobalExceptionHandler, Spring ar returna un HTML de eroare sau un JSON cu stack trace.</p>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial Exception Handling &nbsp;|&nbsp; <a href="index.html" style="color:#f87171">Toate tutorialele</a></footer>
+</body>
+</html>

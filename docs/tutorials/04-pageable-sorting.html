@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pageable & Sorting – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1c1917,#78350f);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#fde68a;margin-top:8px;font-size:1.05rem}
+    .container{max-width:900px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#fbbf24;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#fde68a;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #fbbf24;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.info{border-color:#38bdf8}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .url-box{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 18px;margin:12px 0;font-family:monospace;color:#34d399;font-size:.88rem}
+    .resp{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:16px;margin:16px 0;font-family:monospace;font-size:.82rem;overflow-x:auto}
+    .resp .key{color:#a5b4fc}
+    .resp .val{color:#fbbf24}
+    .resp .val-str{color:#34d399}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#fbbf24;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#fbbf24;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #78350f;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>📄 Pageable & Sorting</h1>
+    <p>Paginare și sortare cu Spring Data JPA – fără să scrii SQL manual</p>
+  </header>
+
+  <div class="container">
+
+    <h2>De ce paginare?</h2>
+    <p>Dacă ai 10.000 de înregistrări și returnezi toate la un request GET, baza de date și rețeaua sunt suprasolicitate. Paginarea returnează un subset (ex: primele 10) cu posibilitatea de a naviga la pagina următoare.</p>
+
+    <div class="callout">
+      <p><strong>Concret:</strong> GET /api/users retornează toate recordurile. GET /api/users?page=0&size=10&sort=lastName,asc returnează primele 10 useri, sortați după nume.</p>
+    </div>
+
+    <h2>Endpoint-uri cu Pageable în proiect</h2>
+    <table>
+      <tr><th>Endpoint</th><th>Entitate</th><th>Acces</th></tr>
+      <tr><td>GET /api/announcements</td><td>Announcement</td><td>Public</td></tr>
+      <tr><td>GET /api/announcements/tag/{name}</td><td>Announcement by tag</td><td>Public</td></tr>
+      <tr><td>GET /api/profile/all</td><td>UserProfile</td><td>ADMIN</td></tr>
+    </table>
+
+    <h2>Controller – primim Pageable automat</h2>
+    <pre><code><span class="comment">// UserProfileController.java</span>
+<span class="annotation">@GetMapping</span>(<span class="string">"/all"</span>)
+<span class="annotation">@PreAuthorize</span>(<span class="string">"hasRole('ADMIN')"</span>)
+<span class="keyword">public</span> ResponseEntity&lt;Page&lt;UserProfileDto&gt;&gt; getAllProfiles(
+        <span class="annotation">@PageableDefault</span>(size = 10, sort = <span class="string">"lastName"</span>) <span class="type">Pageable</span> pageable) {
+    <span class="keyword">return</span> ResponseEntity.ok(userProfileService.getAll(pageable));
+}</code></pre>
+
+    <div class="callout info">
+      <p><strong>@PageableDefault:</strong> Setează valorile implicite dacă clientul nu trimite parametri. Altfel, fără <code>?page=0&size=10</code>, Spring ar returna toate înregistrările.</p>
+    </div>
+
+    <h2>Service – transmite Pageable la repository</h2>
+    <pre><code><span class="comment">// UserProfileService.java</span>
+<span class="keyword">public</span> Page&lt;UserProfileDto&gt; getAll(<span class="type">Pageable</span> pageable) {
+    <span class="keyword">return</span> userProfileRepository
+        .findAll(pageable)          <span class="comment">// Spring Data face automat paginarea în SQL</span>
+        .map(UserProfileDto::from); <span class="comment">// transformă fiecare UserProfile în DTO</span>
+}</code></pre>
+
+    <h2>Repository – moștenit din JpaRepository</h2>
+    <pre><code><span class="comment">// UserProfileRepository.java</span>
+<span class="keyword">public interface</span> <span class="type">UserProfileRepository</span> <span class="keyword">extends</span> JpaRepository&lt;UserProfile, Long&gt; {
+    <span class="comment">// findAll(Pageable) este deja disponibil din JpaRepository</span>
+    <span class="comment">// nu trebuie să scrii nimic suplimentar!</span>
+}
+
+<span class="comment">// AnnouncementRepository.java – cu query customizat</span>
+<span class="keyword">public interface</span> <span class="type">AnnouncementRepository</span> <span class="keyword">extends</span> MongoRepository&lt;Announcement, String&gt; {
+    Page&lt;Announcement&gt; findByEnabledTrue(<span class="type">Pageable</span> pageable);
+    Page&lt;Announcement&gt; findByEnabledTrueAndTagsName(String tagName, <span class="type">Pageable</span> pageable);
+}</code></pre>
+
+    <h2>Ce returnează Spring – structura Page&lt;T&gt;</h2>
+    <div class="resp">
+      {<br/>
+      &nbsp;&nbsp;<span class="key">"content"</span>: [<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;{ <span class="key">"id"</span>: <span class="val">1</span>, <span class="key">"firstName"</span>: <span class="val-str">"Ion"</span>, <span class="key">"lastName"</span>: <span class="val-str">"Popescu"</span> },<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;{ <span class="key">"id"</span>: <span class="val">2</span>, <span class="key">"firstName"</span>: <span class="val-str">"Maria"</span>, <span class="key">"lastName"</span>: <span class="val-str">"Ionescu"</span> }<br/>
+      &nbsp;&nbsp;],<br/>
+      &nbsp;&nbsp;<span class="key">"totalElements"</span>: <span class="val">248</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"totalPages"</span>: <span class="val">25</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"size"</span>: <span class="val">10</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"number"</span>: <span class="val">0</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"first"</span>: <span class="val">true</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"last"</span>: <span class="val">false</span>,<br/>
+      &nbsp;&nbsp;<span class="key">"numberOfElements"</span>: <span class="val">10</span><br/>
+      }
+    </div>
+
+    <h2>Exemple de URL-uri</h2>
+    <div class="url-box">GET /api/profile/all</div>
+    <p>Returnează primele 10 profiluri, sortate după lastName (valori @PageableDefault)</p>
+
+    <div class="url-box">GET /api/profile/all?page=2&size=5&sort=firstName,asc</div>
+    <p>Pagina 3 (0-indexed), 5 rezultate per pagină, sortate după firstName crescător</p>
+
+    <div class="url-box">GET /api/profile/all?page=0&size=20&sort=lastName,desc&sort=firstName,asc</div>
+    <p>Sortare multiplă: întâi după lastName descendent, apoi firstName ascendent</p>
+
+    <div class="url-box">GET /api/announcements?page=0&size=10</div>
+    <p>Primele 10 anunțuri (paginare pe MongoDB)</p>
+
+    <h2>SQL generat automat de Hibernate</h2>
+    <pre><code><span class="comment">-- Hibernate generează automat:</span>
+SELECT * FROM user_profiles
+ORDER BY last_name ASC
+LIMIT 10 OFFSET 0;
+
+<span class="comment">-- Pentru pagina 2:</span>
+SELECT * FROM user_profiles
+ORDER BY last_name ASC
+LIMIT 10 OFFSET 10;</code></pre>
+
+    <h2>Câmpurile clasei Pageable</h2>
+    <table>
+      <tr><th>Parametru</th><th>Tip</th><th>Descriere</th></tr>
+      <tr><td>page</td><td>int</td><td>Numărul paginii (0-indexed, prima pagină = 0)</td></tr>
+      <tr><td>size</td><td>int</td><td>Câte elemente pe pagină</td></tr>
+      <tr><td>sort</td><td>String</td><td>câmp,direcție (ex: lastName,asc)</td></tr>
+    </table>
+
+    <h2>Configurare globală Pageable (opțional)</h2>
+    <pre><code><span class="comment">// application.yml</span>
+spring:
+  data:
+    web:
+      pageable:
+        default-page-size: 10
+        max-page-size: 100  <span class="comment"># previne request de 10000 elemente</span></code></pre>
+
+    <div class="callout">
+      <p><strong>Best practice:</strong> Setează întotdeauna un <code>max-page-size</code> pentru a preveni atacuri DoS prin request-uri cu <code>size=1000000</code>. Spring va refuza automat request-urile cu size mai mare.</p>
+    </div>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce returnează un endpoint cu Page&lt;T&gt; față de List&lt;T&gt;?</div>
+      <div class="qa-a"><code>Page&lt;T&gt;</code> este un wrapper care conține: <strong>content</strong> (lista efectivă de elemente), <strong>totalElements</strong> (total recorduri în baza de date), <strong>totalPages</strong> (total pagini), <strong>size</strong> (elemente per pagină), <strong>number</strong> (pagina curentă, 0-indexed), <strong>first/last</strong> (boolean-uri). Un simplu <code>List&lt;T&gt;</code> returnează toate recordurile fără niciun metadata de paginare.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face @PageableDefault și când este necesar?</div>
+      <div class="qa-a"><code>@PageableDefault(size = 10, sort = "lastName")</code> setează valorile implicite pentru <code>Pageable</code> dacă clientul nu trimite parametrii <code>?page=&amp;size=&amp;sort=</code>. Fără această adnotare, Spring ar folosi valorile default ale framework-ului (page=0, size=20, fără sortare), ceea ce poate returna mai mult decât e dorit. Este o bună practică să specifici întotdeauna un sort default pentru rezultate deterministe.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce SQL generează Hibernate pentru pagina 2 cu size=5?</div>
+      <div class="qa-a">Hibernate generează <code>SELECT * FROM user_profiles ORDER BY last_name ASC LIMIT 5 OFFSET 5</code>. OFFSET = page × size = 2 × 5 = 10... dar pagina 2 (0-indexed) = a 3-a pagină = OFFSET 10. Dacă însebi pagina 1 (0-indexed) = OFFSET 5. Spring calculează automat OFFSET = pageNumber × pageSize, deci nu trebuie să gestionezi manual paginarea SQL.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum trimiți o sortare după mai multe câmpuri?</div>
+      <div class="qa-a">Prin mai mulți parametri <code>sort</code> în URL: <code>?sort=lastName,desc&amp;sort=firstName,asc</code>. Spring Data parsează automat fiecare parametru și construiește un <code>Sort</code> compus. Ordinea parametrilor contează: primul sort este prioritar, al doilea e tiebreaker. Alternativ în Java: <code>Sort.by(Sort.Direction.DESC, "lastName").and(Sort.by(Sort.Direction.ASC, "firstName"))</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce se configurează max-page-size și ce se întâmplă fără el?</div>
+      <div class="qa-a">Fără <code>max-page-size</code>, un client malițios poate trimite <code>?size=1000000</code> și forța serverul să încarce un milion de recorduri din baza de date în memorie — un atac DoS eficient. Cu <code>spring.data.web.pageable.max-page-size: 100</code>, Spring refuză automat valorile mai mari și le setează la maxim. Este o protecție simplă dar importantă.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum definești o metodă în repository cu paginare și filtru?</div>
+      <div class="qa-a">Adaugi parametrul <code>Pageable</code> la orice metodă derivată și returnezi <code>Page&lt;T&gt;</code>. Exemplu: <code>Page&lt;Announcement&gt; findByEnabledTrueAndTagsName(String tagName, Pageable pageable)</code>. Spring Data generează automat SQL-ul cu <code>WHERE enabled = true AND tags.name = ?</code> plus <code>LIMIT/OFFSET</code> din Pageable. Nu trebuie să scrii nimic în implementare.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Paginare și Sortare</h2>
+
+<div class="callout" style="background:#1c1207;border-left:4px solid #fbbf24;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Entitate JPA existentă cu Repository (Tutorial 02). Spring Data JPA în pom.xml.</p>
+</div>
+
+<div style="background:#1c1207;border:1px solid #3f2a0f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fbbf24">Pasul 1 — Activează limitarea paginii în application.yml</strong>
+  <div style="margin-top:12px">
+    <pre><code>spring:
+  data:
+    web:
+      pageable:
+        default-page-size: 10
+        max-page-size: 100</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c1207;border:1px solid #3f2a0f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fbbf24">Pasul 2 — Actualizează Repository cu Pageable și JPQL</strong>
+  <div style="margin-top:12px">
+    <pre><code>@Repository
+public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+
+    Page&lt;User&gt; findAll(Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE " +
+           "(:search IS NULL OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:role IS NULL OR u.role = :role)")
+    Page&lt;User&gt; findFiltered(@Param("search") String search,
+                            @Param("role") Role role,
+                            Pageable pageable);
+}</code></pre>
+    <p>JPQL-ul cu <code>:param IS NULL</code> face filtrul opțional — dacă nu se trimite parametrul, condiția e ignorată.</p>
+  </div>
+</div>
+
+<div style="background:#1c1207;border:1px solid #3f2a0f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fbbf24">Pasul 3 — Service și Controller</strong>
+  <div style="margin-top:12px">
+    <p>Service:</p>
+    <pre><code>public Page&lt;UserDto&gt; findFiltered(String search, Role role, Pageable pageable) {
+    return userRepository.findFiltered(search, role, pageable).map(UserDto::from);
+}</code></pre>
+    <p>Controller — <code>@PageableDefault</code> setează valorile implicite când clientul nu trimite paginare:</p>
+    <pre><code>@GetMapping
+public ResponseEntity&lt;Page&lt;UserDto&gt;&gt; getUsers(
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) Role role,
+        @PageableDefault(size = 10, sort = "username", direction = Sort.Direction.ASC) Pageable pageable) {
+    return ResponseEntity.ok(userService.findFiltered(search, role, pageable));
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong></p>
+  <pre><code>GET http://localhost:8081/api/users?page=0&size=5&sort=username,desc</code></pre>
+  <p>Răspunsul trebuie să conțină: <code>{"content":[...],"totalPages":X,"totalElements":Y,"number":0,"size":5}</code></p>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial Pageable & Sorting &nbsp;|&nbsp; <a href="index.html" style="color:#fbbf24">Toate tutorialele</a></footer>
+</body>
+</html>

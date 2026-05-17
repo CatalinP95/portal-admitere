@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spring Security – Tutorial Complet</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#7c2d12,#c2410c);padding:48px 24px;text-align:center}
+    header h1{font-size:2.2rem;color:#fff;font-weight:700}
+    header p{color:#fed7aa;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#fb923c;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#fdba74;margin:22px 0 8px}
+    p{color:#cbd5e1;margin-bottom:14px}
+    ul,ol{color:#cbd5e1;padding-left:22px;margin-bottom:14px}
+    li{margin-bottom:6px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:22px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#7dd3fc}
+    .kw{color:#f472b6}
+    .ann{color:#34d399}
+    .str{color:#fbbf24}
+    .cmt{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1c0f07;border-left:4px solid #fb923c;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b;background:#1c1207}
+    .callout.ok{border-color:#10b981;background:#022c22}
+    .callout.danger{border-color:#ef4444;background:#1c0607}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#fdba74;padding:11px 14px;text-align:left;font-size:.9rem;border-bottom:2px solid #334155}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem;vertical-align:top}
+    td code{font-size:.83rem;background:#0f172a;padding:2px 6px;border-radius:4px}
+    .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:20px 0}
+    .step{background:#431407;color:#fdba74;padding:10px 16px;border-radius:8px;font-size:.85rem;font-weight:600;border:1px solid #7c2d12}
+    .arrow{color:#fb923c;font-size:1.5rem;font-weight:bold}
+    .qa{background:#1c0f07;border:1px solid #7c2d12;border-radius:8px;padding:18px 22px;margin:14px 0}
+    .qa .q{color:#fb923c;font-weight:600;margin-bottom:8px}
+    .qa .a{color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:50px}
+  </style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+<header>
+  <h1>Spring Security</h1>
+  <p>SecurityFilterChain, JWT filter, @PreAuthorize, roluri, UserDetailsService</p>
+</header>
+
+<div class="container">
+
+<h2>1. Ce este Spring Security?</h2>
+<p>Spring Security este framework-ul de autentificare și autorizare pentru aplicații Spring. Funcționează printr-un <strong>lanț de filtre HTTP</strong> care interceptează fiecare request înainte de a ajunge la controller.</p>
+
+<ul>
+  <li><strong>Autentificare</strong> — Cine ești? (verificare username/password, validare JWT)</li>
+  <li><strong>Autorizare</strong> — Ce ai voie să faci? (roluri: ADMIN, STUDENT)</li>
+</ul>
+
+<h2>2. Fluxul complet al unui request</h2>
+<div class="flow">
+  <div class="step">HTTP Request</div>
+  <span class="arrow">→</span>
+  <div class="step">Security Filter Chain</div>
+  <span class="arrow">→</span>
+  <div class="step">JwtAuthFilter</div>
+  <span class="arrow">→</span>
+  <div class="step">Validare token</div>
+  <span class="arrow">→</span>
+  <div class="step">SecurityContext populated</div>
+  <span class="arrow">→</span>
+  <div class="step">@PreAuthorize check</div>
+  <span class="arrow">→</span>
+  <div class="step">Controller Method</div>
+</div>
+
+<h2>3. SecurityConfiguration – configurarea completă</h2>
+
+<pre><code><span class="ann">@Configuration</span>
+<span class="ann">@EnableWebSecurity</span>                   <span class="cmt">// activează Spring Security</span>
+<span class="ann">@EnableMethodSecurity</span>                 <span class="cmt">// activează @PreAuthorize pe metode</span>
+<span class="kw">public class</span> <span class="type">SecurityConfiguration</span> {
+
+    <span class="kw">private final</span> <span class="type">JwtAuthFilter</span> jwtAuthFilter;
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="type">SecurityFilterChain</span> filterChain(<span class="type">HttpSecurity</span> http) <span class="kw">throws</span> Exception {
+        <span class="kw">return</span> http
+            <span class="cmt">// 1. Dezactivăm CSRF (nu avem sesiuni, folosim JWT)</span>
+            .csrf(csrf -> csrf.disable())
+
+            <span class="cmt">// 2. Fără sesiuni — stateless (JWT are toată informația)</span>
+            .sessionManagement(s -> s
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            <span class="cmt">// 3. Regulile de autorizare</span>
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(<span class="str">"/auth/**"</span>).permitAll()          <span class="cmt">// login/register: toată lumea</span>
+                .requestMatchers(<span class="str">"/actuator/**"</span>).permitAll()      <span class="cmt">// health checks: toată lumea</span>
+                .requestMatchers(<span class="str">"/v3/api-docs/**"</span>).permitAll()   <span class="cmt">// Swagger: toată lumea</span>
+                .anyRequest().authenticated()                   <span class="cmt">// orice altceva: autentificat</span>
+            )
+
+            <span class="cmt">// 4. Adăugăm filtrul JWT ÎNAINTE de filtrul standard de username/password</span>
+            .addFilterBefore(jwtAuthFilter,
+                <span class="type">UsernamePasswordAuthenticationFilter</span>.<span class="kw">class</span>)
+
+            .build();
+    }
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="type">UserDetailsService</span> userDetailsService() {
+        <span class="kw">return</span> username -> userRepository.findByUsername(username)
+            .orElseThrow(() -> <span class="kw">new</span> UsernameNotFoundException(<span class="str">"User not found"</span>));
+    }
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="type">AuthenticationProvider</span> authenticationProvider() {
+        <span class="type">DaoAuthenticationProvider</span> provider = <span class="kw">new</span> <span class="type">DaoAuthenticationProvider</span>();
+        provider.setUserDetailsService(userDetailsService());
+        provider.setPasswordEncoder(passwordEncoder());
+        <span class="kw">return</span> provider;
+    }
+}</code></pre>
+
+<h2>4. JwtAuthFilter – filtrul personalizat</h2>
+<p>Extinde <code>OncePerRequestFilter</code> — garantat că rulează o singură dată per request.</p>
+
+<pre><code><span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="type">JwtAuthFilter</span> <span class="kw">extends</span> OncePerRequestFilter {
+
+    <span class="kw">private final</span> <span class="type">JwtUtil</span> jwtUtil;
+
+    <span class="ann">@Override</span>
+    <span class="kw">protected void</span> doFilterInternal(
+            <span class="type">HttpServletRequest</span> request,
+            <span class="type">HttpServletResponse</span> response,
+            <span class="type">FilterChain</span> filterChain) <span class="kw">throws</span> IOException, ServletException {
+
+        <span class="cmt">// 1. Citim header-ul Authorization</span>
+        String authHeader = request.getHeader(<span class="str">"Authorization"</span>);
+
+        <span class="cmt">// 2. Dacă nu există sau nu începe cu "Bearer ", trecem mai departe</span>
+        <span class="kw">if</span> (authHeader == <span class="kw">null</span> || !authHeader.startsWith(<span class="str">"Bearer "</span>)) {
+            filterChain.doFilter(request, response);
+            <span class="kw">return</span>;
+        }
+
+        <span class="cmt">// 3. Extragem tokenul (fără prefixul "Bearer ")</span>
+        String token = authHeader.substring(<span class="num">7</span>);
+
+        <span class="cmt">// 4. Validăm tokenul</span>
+        <span class="kw">if</span> (jwtUtil.isTokenValid(token)) {
+            String userId = jwtUtil.extractUserId(token);   <span class="cmt">// ex: "1"</span>
+            String role   = jwtUtil.extractRole(token);     <span class="cmt">// ex: "ADMIN"</span>
+
+            <span class="cmt">// 5. Creăm obiectul de autentificare</span>
+            <span class="type">UsernamePasswordAuthenticationToken</span> auth =
+                <span class="kw">new</span> <span class="type">UsernamePasswordAuthenticationToken</span>(
+                    userId,                  <span class="cmt">// principal = userId (String)</span>
+                    <span class="kw">null</span>,                    <span class="cmt">// credentials = null (nu mai avem nevoie)</span>
+                    List.of(<span class="kw">new</span> <span class="type">SimpleGrantedAuthority</span>(<span class="str">"ROLE_"</span> + role))
+                    <span class="cmt">// authorities: ROLE_ADMIN sau ROLE_STUDENT</span>
+                );
+
+            <span class="cmt">// 6. Stocăm autentificarea în SecurityContext</span>
+            <span class="cmt">// (disponibil în tot request-ul curent)</span>
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+
+        <span class="cmt">// 7. Continuăm cu următorul filtru din lanț</span>
+        filterChain.doFilter(request, response);
+    }
+}</code></pre>
+
+<div class="callout">
+  <p><strong>De ce ROLE_ prefix?</strong> Spring Security adaugă prefixul <code>ROLE_</code> intern. Dacă în token avem <code>"ADMIN"</code>, trebuie să creem autoritatea ca <code>"ROLE_ADMIN"</code>. Când folosim <code>hasRole('ADMIN')</code> în @PreAuthorize, Spring compară cu <code>"ROLE_ADMIN"</code> automat. <code>hasAuthority('ROLE_ADMIN')</code> face comparația fără adăugare de prefix.</p>
+</div>
+
+<h2>5. SecurityContext – cum accesăm userul curent</h2>
+
+<pre><code><span class="cmt">// În controller — userul curent vine din SecurityContext</span>
+<span class="ann">@GetMapping</span>
+<span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">UserProfileDto</span>&gt; getOwnProfile(<span class="type">Authentication</span> auth) {
+    <span class="cmt">// auth.getName() = principal = userId (setat în JwtAuthFilter)</span>
+    Long userId = Long.parseLong(auth.getName());
+    <span class="kw">return</span> ResponseEntity.ok(userProfileService.getByUserId(userId));
+}
+
+<span class="cmt">// Sau direct din SecurityContextHolder (în orice loc din cod)</span>
+<span class="type">Authentication</span> authentication =
+    SecurityContextHolder.getContext().getAuthentication();
+String userId = authentication.getName();
+Collection&lt;? <span class="kw">extends</span> GrantedAuthority&gt; roles =
+    authentication.getAuthorities();</code></pre>
+
+<h2>6. @PreAuthorize – autorizare la nivel de metodă</h2>
+<p>Necesită <code>@EnableMethodSecurity</code> pe configurare. Evaluează o expresie SpEL înainte de execuția metodei.</p>
+
+<pre><code><span class="cmt">// Doar ADMIN poate accesa</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+<span class="ann">@GetMapping</span>(<span class="str">"/all"</span>)
+<span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">Page</span>&lt;<span class="type">UserDto</span>&gt;&gt; getAll() { ... }
+
+<span class="cmt">// Orice user autentificat</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"isAuthenticated()"</span>)
+<span class="ann">@GetMapping</span>
+<span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">UserProfileDto</span>&gt; getOwnProfile() { ... }
+
+<span class="cmt">// ADMIN sau proprietarul resursei</span>
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN') or principal == #userId.toString()"</span>)
+<span class="ann">@GetMapping</span>(<span class="str">"/{userId}"</span>)
+<span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">UserProfileDto</span>&gt; getById(<span class="ann">@PathVariable</span> Long userId) { ... }
+<span class="cmt">// principal = auth.getName() = userId din token</span>
+<span class="cmt">// #userId = parametrul metodei</span></code></pre>
+
+<table>
+  <tr><th>Expresie SpEL</th><th>Înțeles</th></tr>
+  <tr><td><code>hasRole('ADMIN')</code></td><td>Userul are rolul ADMIN (caută ROLE_ADMIN)</td></tr>
+  <tr><td><code>hasAnyRole('ADMIN','MOD')</code></td><td>Are rolul ADMIN sau MOD</td></tr>
+  <tr><td><code>hasAuthority('ROLE_ADMIN')</code></td><td>Are autoritatea exactă ROLE_ADMIN (fără prefix automat)</td></tr>
+  <tr><td><code>isAuthenticated()</code></td><td>Este autentificat (are token valid)</td></tr>
+  <tr><td><code>isAnonymous()</code></td><td>Nu este autentificat</td></tr>
+  <tr><td><code>principal == #id.toString()</code></td><td>Principal-ul (userId din token) egal cu parametrul <code>id</code></td></tr>
+  <tr><td><code>#oauth2.hasScope('read')</code></td><td>Are scope-ul OAuth2 (pentru OAuth)</td></tr>
+</table>
+
+<h2>7. UserDetailsService – interfața de autentificare</h2>
+
+<pre><code><span class="cmt">// Implementată în ApplicationConfiguration</span>
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="type">UserDetailsService</span> userDetailsService() {
+    <span class="kw">return</span> username -> {
+        <span class="type">User</span> user = userRepository.findByUsername(username)
+            .orElseThrow(() -> <span class="kw">new</span> <span class="type">UsernameNotFoundException</span>(<span class="str">"User not found: "</span> + username));
+
+        <span class="cmt">// Returnează un UserDetails — Spring îl folosește la autentificare</span>
+        <span class="kw">return</span> org.springframework.security.core.userdetails.User
+            .withUsername(user.getUsername())
+            .password(user.getPassword())        <span class="cmt">// parola hash BCrypt din DB</span>
+            .roles(user.getRole().name())        <span class="cmt">// adaugă automat ROLE_ prefix</span>
+            .disabled(!user.isEnabled())
+            .build();
+    };
+}</code></pre>
+
+<div class="callout">
+  <p><strong>Fluxul de login:</strong><br/>
+  1. <code>AuthenticationManager.authenticate(username, password)</code><br/>
+  2. <code>DaoAuthenticationProvider</code> apelează <code>UserDetailsService.loadUserByUsername(username)</code><br/>
+  3. Se compară parola din request (text plain) cu hash-ul din DB folosind <code>BCryptPasswordEncoder.matches()</code><br/>
+  4. Dacă match → autentificare reușită → generăm JWT<br/>
+  5. Dacă nu match → <code>BadCredentialsException</code></p>
+</div>
+
+<h2>8. PasswordEncoder – BCrypt</h2>
+
+<pre><code><span class="cmt">// Înregistrare user — parola se hash-uiește</span>
+user.setPassword(passwordEncoder.encode(request.getPassword()));
+<span class="cmt">// rezultat: "$2a$10$N6..." (BCrypt cu cost factor 10, salt aleator)</span>
+
+<span class="cmt">// Login — verificare parolă</span>
+<span class="cmt">// Nu compari direct — encoderele BCrypt includ salt în hash!</span>
+passwordEncoder.matches(rawPassword, storedHash); <span class="cmt">// returnează true/false</span>
+
+<span class="cmt">// BCrypt adaugă automat salt aleator → același text dă hash-uri diferite</span>
+passwordEncoder.encode(<span class="str">"pass123"</span>); <span class="cmt">// "$2a$10$abc..."</span>
+passwordEncoder.encode(<span class="str">"pass123"</span>); <span class="cmt">// "$2a$10$xyz..." — DIFERIT!</span></code></pre>
+
+<div class="callout warn">
+  <p><strong>Nu stoca parole plain text niciodată!</strong> BCrypt este algoritm one-way — din hash nu poți recupera parola originală. Cost factor (default 10) determină cât de lent este hash-ul — mai lent = mai greu de forțat brute-force.</p>
+</div>
+
+<h2>9. CSRF – de ce îl dezactivăm?</h2>
+<p>CSRF (Cross-Site Request Forgery) este un atac unde un site malițios face request-uri în numele tău pe un alt site. Spring Security activează protecția CSRF implicit prin tokens în sesiune.</p>
+<p>În aplicații REST cu JWT, <strong>dezactivăm CSRF</strong> deoarece:</p>
+<ul>
+  <li>Nu avem sesiuni (stateless)</li>
+  <li>Tokenul JWT trebuie trimis explicit în header — atacurile CSRF nu pot accesa header-ul <code>Authorization</code></li>
+  <li>Browser-ul nu adaugă automat JWT în requests cross-site</li>
+</ul>
+
+<h2>10. Roluri în proiect</h2>
+
+<pre><code><span class="cmt">// Role.java — enum simplu</span>
+<span class="kw">public enum</span> <span class="type">Role</span> {
+    STUDENT,    <span class="cmt">// student care aplică la admitere</span>
+    ADMIN       <span class="cmt">// administrator care gestionează datele</span>
+}
+
+<span class="cmt">// User.java — câmpul role</span>
+<span class="ann">@Enumerated</span>(<span class="type">EnumType</span>.STRING)   <span class="cmt">// stocheaza "STUDENT" sau "ADMIN" în DB, nu 0/1</span>
+<span class="ann">@Column</span>(nullable = <span class="kw">false</span>)
+<span class="kw">private</span> <span class="type">Role</span> role = <span class="type">Role</span>.STUDENT;  <span class="cmt">// implicit STUDENT la înregistrare</span></code></pre>
+
+<h2>11. Răspunsuri HTTP pentru erori de securitate</h2>
+<table>
+  <tr><th>Status</th><th>Cauza</th><th>Exemplu</th></tr>
+  <tr><td>401 Unauthorized</td><td>Nu ai token sau tokenul e invalid/expirat</td><td>Request fără Authorization header</td></tr>
+  <tr><td>403 Forbidden</td><td>Ești autentificat dar nu ai rolul necesar</td><td>Student încearcă /admin/users</td></tr>
+  <tr><td>400 Bad Request</td><td>Date invalide în body (validare)</td><td>CNP cu format greșit</td></tr>
+</table>
+
+<div class="callout warn">
+  <p><strong>Observație importantă:</strong> Spring Security returnează 403 implicit pentru requesturi neautentificate (fără token), nu 401. Dacă vrei comportamentul "corect" HTTP, trebuie configurat un <code>AuthenticationEntryPoint</code> custom care returnează 401.</p>
+</div>
+
+<h2>12. Întrebări posibile la examen</h2>
+
+<div class="qa">
+  <div class="q">Q: Ce este Spring Security Filter Chain și cum funcționează?</div>
+  <div class="a">Spring Security interceptează toate requesturile HTTP printr-un lanț de filtre (Filter Chain). Fiecare filtru face o verificare specifică. Ordinea contează: JwtAuthFilter rulează primul, setează autentificarea în SecurityContext, apoi celelalte filtre verifică regulile de autorizare. Filtrul nostru personalizat este adăugat înainte de UsernamePasswordAuthenticationFilter cu addFilterBefore().</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce este SecurityContext și de ce e important?</div>
+  <div class="a">SecurityContext este un holder thread-local care stochează informații despre userul autentificat curent. JwtAuthFilter populează SecurityContext după validarea tokenului. Controller-ul accesează userul prin Authentication auth injectat automat de Spring, sau prin SecurityContextHolder.getContext().getAuthentication(). La finalul fiecărui request, SecurityContext este curățat.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Diferența dintre @PreAuthorize hasRole și hasAuthority?</div>
+  <div class="a">hasRole('ADMIN') adaugă automat prefixul ROLE_ și caută ROLE_ADMIN în lista de authorities. hasAuthority('ROLE_ADMIN') face comparație exactă fără prefix automat. În proiect, când creăm autoritatea în JwtAuthFilter folosim new SimpleGrantedAuthority("ROLE_" + role), deci ambele forme ar funcționa, dar hasRole este mai concis.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce dezactivăm CSRF în REST API-uri cu JWT?</div>
+  <div class="a">CSRF protejează împotriva atacurilor unde un browser face request-uri automate cu cookie-uri de sesiune. Deoarece folosim JWT în headerul Authorization (nu în cookie), browserul nu trimite automat tokenul în requests cross-site. Atacatorul nu poate accesa headerul Authorization. Deci protecția CSRF este inutilă și ar complica development-ul (ar trebui să trimiți un CSRF token în fiecare request POST/PUT).</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Cum funcționează BCrypt și de ce nu poți recupera parola originală?</div>
+  <div class="a">BCrypt este un algoritm de hashing one-way cu salt aleator. Saltul este inclus în hash-ul final, deci același input dă output-uri diferite. La verificare, BCrypt extrage saltul din hash și re-hash-uiește parola introdusă cu același salt. Dacă match → parola e corectă. Nu poți recupera parola originală din hash — este computațional imposibil (would require brute-forcing billions of combinations). Cost factor 10 înseamnă 2^10 = 1024 iterații de hash.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @EnableMethodSecurity?</div>
+  <div class="a">Activează suportul pentru adnotările de securitate la nivel de metodă: @PreAuthorize (evaluat înainte de metodă), @PostAuthorize (evaluat după metodă, poate accesa rezultatul cu #returnObject), @PreFilter și @PostFilter (pentru filtrarea colecțiilor). Fără aceasta, @PreAuthorize este ignorat și oricine poate apela metodele.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce diferență este între SessionCreationPolicy.STATELESS și ALWAYS?</div>
+  <div class="a">STATELESS: Spring Security nu creează niciodată o sesiune HTTP și nu folosește sesiunile existente. Fiecare request trebuie să fie complet independent, cu tot contextul de autentificare (JWT). ALWAYS: Spring creează sesiune la fiecare request autentificat și stochează autentificarea în sesiune. STATELESS este corect pentru REST API-uri cu JWT — nu are sens să stochezi autentificarea în sesiune când o verifici prin JWT la fiecare request.</div>
+</div>
+
+</div>
+
+<div class="container">
+<h2>13. Implementare pas cu pas — Spring Security cu JWT</h2>
+
+<div class="callout" style="background:#1c0607;border-left:4px solid #f87171;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> spring-boot-starter-security în pom.xml. JwtUtil creat (Tutorial 01).</p>
+</div>
+
+<div style="background:#1c0607;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 1 — Creează ApplicationConfiguration</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>config/ApplicationConfiguration.java</code> — definește beans-urile de securitate:</p>
+    <pre><code>@Configuration
+public class ApplicationConfiguration {
+
+    private final UserRepository userRepository;
+
+    // constructor injection...
+
+    @Bean
+    public UserDetailsService userDetailsService() {
+        return username -> userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+        // Spring apelează această metodă la autentificare pentru a încărca userul din DB
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+        // BCrypt: la fiecare apel generează un salt random, deci același plaintext → hash diferit
+    }
+
+    @Bean
+    public AuthenticationManager authManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0607;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 2 — Creează SecurityConfiguration</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>config/SecurityConfiguration.java</code>:</p>
+    <pre><code>@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity   // activează @PreAuthorize pe metode
+public class SecurityConfiguration {
+
+    private final JwtAuthFilter jwtAuthFilter;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // STATELESS: Spring nu creează sesiuni HTTP, fiecare request se autentifică prin JWT
+            .csrf(csrf -> csrf.disable())
+            // CSRF dezactivat deoarece nu avem sesiuni (JWT este stateless)
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/auth/login", "/auth/register", "/auth/refresh").permitAll()
+                .requestMatchers("/api/users/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            // Adaugă filtrul JWT ÎNAINTE de filtrul standard de username/password
+            // Astfel JWT e verificat primul la fiecare request
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .build();
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0607;border:1px solid #3f1515;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#f87171">Pasul 3 — Adaugă @PreAuthorize pe Controller</strong>
+  <div style="margin-top:12px">
+    <p>Cu <code>@EnableMethodSecurity</code> activ, poți proteja metode individuale:</p>
+    <pre><code>@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")          // doar ADMIN
+    public ResponseEntity&lt;Page&lt;UserDto&gt;&gt; getAll(Pageable pageable) { ... }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity&lt;Void&gt; delete(@PathVariable Long id) { ... }
+
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")         // orice user autentificat
+    public ResponseEntity&lt;UserDto&gt; getMe(Authentication auth) { ... }
+}</code></pre>
+    <p>Dacă userul nu are rolul necesar, Spring returnează automat <strong>403 Forbidden</strong>.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong></p>
+  <pre><code># Fără token → 401
+GET http://localhost:8081/api/users
+# → 401 Unauthorized
+
+# Cu token de STUDENT, endpoint ADMIN → 403
+GET http://localhost:8081/api/users
+Authorization: Bearer {token_student}
+# → 403 Forbidden
+
+# Cu token de ADMIN → 200
+GET http://localhost:8081/api/users
+Authorization: Bearer {token_admin}
+# → 200 OK cu lista de useri</code></pre>
+</div>
+</div>
+
+<footer>Portal Admitere – Tutorial 09: Spring Security &nbsp;|&nbsp; <a href="index.html" style="color:#fb923c">Toate tutorialele</a></footer>
+</body>
+</html>

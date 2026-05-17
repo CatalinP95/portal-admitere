@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JWT Authentication – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    .topbar a:hover{color:#a5b4fc}
+    header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#bfdbfe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:900px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b}
+    .callout.success{border-color:#10b981}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#312e81;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600}
+    .arrow{color:#6366f1;font-size:1.4rem}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#a5b4fc;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    tr:hover td{background:#1e293b55}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>🔐 JWT Authentication</h1>
+    <p>JSON Web Tokens în Spring Boot 3 – autentificare stateless completă</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ce este JWT?</h2>
+    <p>JWT (JSON Web Token) este un standard pentru transmiterea securizată a informațiilor între două părți sub forma unui obiect JSON. Un token JWT este semnat digital, deci poate fi verificat fără o bază de date.</p>
+
+    <div class="callout">
+      <p><strong>Structura unui token JWT:</strong><br/>
+      <code>header.payload.signature</code><br/>
+      Exemplu: <code>eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123</code></p>
+    </div>
+
+    <h2>Flux de autentificare</h2>
+    <div class="flow">
+      <div class="step">Client trimite credentials</div>
+      <span class="arrow">→</span>
+      <div class="step">AuthService verifică user</div>
+      <span class="arrow">→</span>
+      <div class="step">JwtUtil generează token</div>
+      <span class="arrow">→</span>
+      <div class="step">Client primește access + refresh token</div>
+      <span class="arrow">→</span>
+      <div class="step">Fiecare request include Authorization: Bearer</div>
+      <span class="arrow">→</span>
+      <div class="step">JwtAuthFilter validează tokenul</div>
+    </div>
+
+    <h2>JwtUtil – generare și validare</h2>
+    <p>Clasa <code>JwtUtil</code> se află în <code>security/JwtUtil.java</code> și are responsabilitatea de a crea și valida tokeni.</p>
+
+    <pre><code><span class="annotation">@RefreshScope</span>   <span class="comment">// permite reîncărcarea valorilor din Config Server fără restart</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> JwtUtil {
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.secret}"</span>)
+    <span class="keyword">private</span> String secret;
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.expiration}"</span>)
+    <span class="keyword">private long</span> expiration;  <span class="comment">// 86400000 = 24 ore în ms</span>
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.refresh-expiration}"</span>)
+    <span class="keyword">private long</span> refreshExpiration;  <span class="comment">// 604800000 = 7 zile în ms</span>
+
+    <span class="keyword">private</span> SecretKey getKey() {
+        <span class="keyword">return</span> Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
+    <span class="keyword">public</span> String generateToken(String userId, String role) {
+        <span class="keyword">return</span> buildToken(userId, role, expiration);
+    }
+
+    <span class="keyword">public</span> String generateRefreshToken(String userId, String role) {
+        <span class="keyword">return</span> buildToken(userId, role, refreshExpiration);
+    }
+
+    <span class="comment">// permite token cu durată custom (ex: remember me)</span>
+    <span class="keyword">public</span> String generateTokenWithExpiry(String userId, String role, <span class="keyword">long</span> customExpiryMs) {
+        <span class="keyword">return</span> buildToken(userId, role, customExpiryMs);
+    }
+
+    <span class="keyword">private</span> String buildToken(String subject, String role, <span class="keyword">long</span> ttl) {
+        <span class="keyword">return</span> Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(subject)         <span class="comment">// userId ca string</span>
+                .claim(<span class="string">"role"</span>, role)      <span class="comment">// ex: "STUDENT", "ADMIN"</span>
+                .issuedAt(<span class="keyword">new</span> Date())
+                .expiration(<span class="keyword">new</span> Date(System.currentTimeMillis() + ttl))
+                .signWith(getKey())
+                .compact();
+    }
+
+    <span class="keyword">public boolean</span> isTokenValid(String token) {
+        <span class="keyword">try</span> {
+            <span class="keyword">return</span> !extractAllClaims(token).getExpiration().before(<span class="keyword">new</span> Date());
+        } <span class="keyword">catch</span> (Exception e) {
+            <span class="keyword">return false</span>;
+        }
+    }
+}</code></pre>
+
+    <h2>Remember Me – token cu durată extinsă</h2>
+    <p>Dacă utilizatorul bifează "Ține-mă conectat", generăm tokeni cu durată mai mare: access 7 zile, refresh 30 zile.</p>
+
+    <pre><code><span class="comment">// în LoginRequest.java</span>
+<span class="keyword">private boolean</span> rememberMe = <span class="keyword">false</span>;
+
+<span class="comment">// în AuthService.java</span>
+<span class="keyword">private static final long</span> REMEMBER_ME_ACCESS_MS  = 7L  * 24 * 3600 * 1000;
+<span class="keyword">private static final long</span> REMEMBER_ME_REFRESH_MS = 30L * 24 * 3600 * 1000;
+
+<span class="keyword">long</span> accessExpiry  = request.isRememberMe() ? REMEMBER_ME_ACCESS_MS  : accessExpirationMs;
+<span class="keyword">long</span> refreshExpiry = request.isRememberMe() ? REMEMBER_ME_REFRESH_MS : refreshExpirationMs;
+
+String accessToken  = jwtUtil.generateTokenWithExpiry(userId, role, accessExpiry);
+String refreshToken = jwtUtil.generateTokenWithExpiry(userId, role, refreshExpiry);</code></pre>
+
+    <h2>JwtAuthFilter – filtrarea requesturilor</h2>
+    <p>Fiecare request HTTP trece prin acest filtru. Dacă există un token valid în header, utilizatorul este autentificat automat.</p>
+
+    <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> JwtAuthFilter <span class="keyword">extends</span> OncePerRequestFilter {
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">protected void</span> doFilterInternal(HttpServletRequest req,
+                                     HttpServletResponse res,
+                                     FilterChain chain) {
+        String header = req.getHeader(<span class="string">"Authorization"</span>);
+
+        <span class="keyword">if</span> (header != <span class="keyword">null</span> && header.startsWith(<span class="string">"Bearer "</span>)) {
+            String token = header.substring(7);
+
+            <span class="keyword">if</span> (jwtUtil.isTokenValid(token)) {
+                String userId = jwtUtil.extractUserId(token);
+                String role   = jwtUtil.extractRole(token);
+
+                <span class="comment">// setăm autentificarea în SecurityContext</span>
+                UsernamePasswordAuthenticationToken auth =
+                    <span class="keyword">new</span> UsernamePasswordAuthenticationToken(
+                        userId, <span class="keyword">null</span>,
+                        List.of(<span class="keyword">new</span> SimpleGrantedAuthority(<span class="string">"ROLE_"</span> + role))
+                    );
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            }
+        }
+        chain.doFilter(req, res);
+    }
+}</code></pre>
+
+    <h2>Configurare Spring Security</h2>
+
+    <pre><code><span class="annotation">@Bean</span>
+<span class="keyword">public</span> SecurityFilterChain filterChain(HttpSecurity http) <span class="keyword">throws</span> Exception {
+    <span class="keyword">return</span> http
+        .csrf(csrf -> csrf.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(<span class="string">"/api/auth/**"</span>).permitAll()
+            .requestMatchers(<span class="string">"/actuator/**"</span>).permitAll()
+            .anyRequest().authenticated()
+        )
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+        .build();
+}</code></pre>
+
+    <h2>Testare cu Postman</h2>
+    <table>
+      <tr><th>Endpoint</th><th>Method</th><th>Body</th><th>Răspuns</th></tr>
+      <tr><td>/api/auth/login</td><td>POST</td><td>{"username":"admin","password":"pass","rememberMe":false}</td><td>accessToken, refreshToken</td></tr>
+      <tr><td>/api/auth/refresh</td><td>POST</td><td>{"refreshToken":"..."}</td><td>nou accessToken</td></tr>
+      <tr><td>/api/users/me</td><td>GET</td><td>Authorization: Bearer &lt;token&gt;</td><td>date user</td></tr>
+    </table>
+
+    <div class="callout success">
+      <p><strong>Tip JWT.io:</strong> Poți decoda orice token JWT pe <a href="https://jwt.io" style="color:#34d399">jwt.io</a> pentru a vedea payload-ul (userId, role, expiry). Cheia secretă nu este stocată în token!</p>
+    </div>
+
+    <h2>De ce stateless?</h2>
+    <p>Serverul nu stochează sesiuni. Fiecare request este independent – util în microservicii unde mai multe instanțe rulează simultan. Tokenul conține toată informația necesară autentificării.</p>
+
+    <div class="callout warn">
+      <p><strong>Atenție:</strong> Nu stoca informații sensibile în payload-ul JWT (parole, date de card etc.) deoarece poate fi decodat de oricine. Doar semnat, nu criptat!</p>
+    </div>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce conține un token JWT și de ce poate fi decodat de oricine?</div>
+      <div class="qa-a">Un JWT are 3 părți: <strong>header</strong> (algoritmul de semnare), <strong>payload</strong> (claims: sub=userId, role, iat, exp) și <strong>signature</strong>. Header și payload sunt doar Base64-encoded, nu criptate — oricine le poate decoda. Signature este HMAC-SHA256 cu cheia secretă, deci nu poate fi falsificat fără cheie. Concluzie: nu pune date sensibile în payload!</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce JWT este „stateless" și care e avantajul în microservicii?</div>
+      <div class="qa-a">Serverul nu stochează nicio sesiune — tokenul conține toată informația necesară (userId, rol, expiry). Fiecare instanță a serviciului poate valida orice token independent, fără o bază de date de sesiuni partajată. Ideal pentru microservicii unde rulează multiple instanțe simultan.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Care este diferența dintre access token și refresh token?</div>
+      <div class="qa-a"><strong>Access token</strong>: durată scurtă (24h implicit, 7 zile cu Remember Me), trimis la fiecare request în header <code>Authorization: Bearer ...</code>. <strong>Refresh token</strong>: durată lungă (7 zile implicit, 30 zile cu Remember Me), folosit doar pentru a obține un nou access token la endpoint-ul <code>POST /api/auth/refresh</code> când access token-ul expiră.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face JwtAuthFilter și cum se integrează în Spring Security?</div>
+      <div class="qa-a"><code>JwtAuthFilter extends OncePerRequestFilter</code> — rulează o singură dată per request. Extrage tokenul din header-ul <code>Authorization: Bearer ...</code>, validează cu <code>jwtUtil.isTokenValid()</code>, extrage userId și rol, creează un <code>UsernamePasswordAuthenticationToken</code> și îl pune în <code>SecurityContextHolder</code>. Spring Security îl aplică înainte de <code>UsernamePasswordAuthenticationFilter</code> via <code>.addFilterBefore(...)</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face @RefreshScope pe JwtUtil și de ce e necesar?</div>
+      <div class="qa-a"><code>@RefreshScope</code> marchează bean-ul ca „refresh-able": la un <code>POST /actuator/refresh</code>, Spring distruge instanța curentă și creează una nouă cu valorile <code>@Value</code> proaspăt citite din Config Server. Fără această adnotare, JwtUtil ar păstra secreta și expiry-ul de la pornirea aplicației, indiferent de câte ori trimiți refresh.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum funcționează Remember Me în implementarea noastră?</div>
+      <div class="qa-a"><code>LoginRequest</code> are câmpul <code>boolean rememberMe = false</code>. În <code>AuthService.login()</code>, dacă <code>isRememberMe()</code> este true, se apelează <code>generateTokenWithExpiry(userId, role, customMs)</code> cu 7 zile pentru access și 30 zile pentru refresh. Altfel, se folosesc <code>generateToken()</code> și <code>generateRefreshToken()</code> cu valorile standard din Config Server.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce cod HTTP se întoarce pentru un request fără token sau cu token expirat?</div>
+      <div class="qa-a"><strong>401 Unauthorized</strong> — returnat automat de Spring Security dacă <code>SecurityContext</code> nu conține o autentificare validă. <strong>403 Forbidden</strong> — dacă tokenul e valid dar userul nu are rolul necesar (ex: <code>@PreAuthorize("hasRole('ADMIN')")</code> accesat de un STUDENT). Spring Security le gestionează automat prin <code>AuthenticationEntryPoint</code> și <code>AccessDeniedHandler</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce excludem MongoRepositoriesAutoConfiguration în testele JwtUtil?</div>
+      <div class="qa-a">Testele unitare pentru <code>JwtUtil</code> sunt rescrise fără context Spring (fără <code>@SpringBootTest</code>), folosind direct <code>new JwtUtil()</code> și <code>ReflectionTestUtils.setField()</code> pentru câmpurile <code>@Value</code>. Astfel se evită complet problema <code>@RefreshScope</code> (care necesită Spring Cloud) și lipsa <code>mongoTemplate</code> — testele rulează instant, fără nicio dependință externă.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — JWT în Spring Boot</h2>
+
+<div class="callout" style="background:#0f2744;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Microserviciul Spring Boot creat (Tutorial 00), Spring Security în pom.xml, MySQL pornit.</p>
+</div>
+
+<div style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 1 — Adaugă dependința JWT în pom.xml</strong>
+  <div style="margin-top:12px">
+    <p>Deschide <code>user-service/pom.xml</code> și adaugă în secțiunea <code>&lt;dependencies&gt;</code>:</p>
+    <pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+    &lt;artifactId&gt;jjwt-api&lt;/artifactId&gt;
+    &lt;version&gt;0.11.5&lt;/version&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+    &lt;artifactId&gt;jjwt-impl&lt;/artifactId&gt;
+    &lt;version&gt;0.11.5&lt;/version&gt;
+    &lt;scope&gt;runtime&lt;/scope&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+    &lt;artifactId&gt;jjwt-jackson&lt;/artifactId&gt;
+    &lt;version&gt;0.11.5&lt;/version&gt;
+    &lt;scope&gt;runtime&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+    <p>Adaugă și în <code>application.yml</code>:</p>
+    <pre><code>jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000       # 24 ore în milisecunde
+  refresh-expiration: 604800000  # 7 zile</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 2 — Creează JwtUtil</strong>
+  <div style="margin-top:12px">
+    <p>Creează fișierul <code>security/JwtUtil.java</code>:</p>
+    <pre><code>@Component
+@RefreshScope
+public class JwtUtil {
+
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.expiration:86400000}")
+    private long expiration;
+
+    @Value("${jwt.refresh-expiration:604800000}")
+    private long refreshExpiration;
+
+    private Key getSignKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(secret);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String generateToken(String userId, String role) {
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("role", role)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String extractUserId(String token) {
+        return Jwts.parserBuilder().setSigningKey(getSignKey()).build()
+                .parseClaimsJws(token).getBody().getSubject();
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(getSignKey()).build().parseClaimsJws(token);
+            return true;
+        } catch (JwtException e) { return false; }
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 3 — Creează JwtAuthFilter</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>security/JwtAuthFilter.java</code>. Acest filtru se execută la fiecare request HTTP:</p>
+    <pre><code>@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
+
+    // constructor injection...
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        // 1. Extrage headerul Authorization
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response); // lasă requestul să continue
+            return;
+        }
+
+        // 2. Extrage token-ul (după "Bearer ")
+        String token = authHeader.substring(7);
+
+        // 3. Validează și autentifică
+        if (jwtUtil.isTokenValid(token)) {
+            String userId = jwtUtil.extractUserId(token);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+            UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(auth); // înregistrează autentificarea
+        }
+
+        filterChain.doFilter(request, response); // continuă cu filtrul următor
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 4 — Creează endpoint-ul de login</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>dto/LoginRequest.java</code>:</p>
+    <pre><code>public record LoginRequest(String username, String password, boolean rememberMe) {}</code></pre>
+    <p>Creează <code>dto/AuthResponse.java</code>:</p>
+    <pre><code>public record AuthResponse(String accessToken, String refreshToken) {}</code></pre>
+    <p>În <code>service/AuthService.java</code>, metoda de login:</p>
+    <pre><code>public AuthResponse login(LoginRequest request) {
+    // 1. Verifică că userul există
+    User user = userRepository.findByUsername(request.username())
+            .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+
+    // 2. Verifică parola cu BCrypt
+    if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        throw new BadCredentialsException("Invalid credentials");
+    }
+
+    // 3. Generează token-urile
+    String accessToken = jwtUtil.generateToken(user.getId().toString(), user.getRole().name());
+    String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
+
+    // 4. Salvează refresh token în DB (pentru invalidare la logout)
+    saveRefreshToken(user, refreshToken, refreshExpirationMs);
+
+    return new AuthResponse(accessToken, refreshToken);
+}</code></pre>
+    <p>În <code>api/AuthController.java</code>:</p>
+    <pre><code>@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @PostMapping("/login")
+    public ResponseEntity&lt;AuthResponse&gt; login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Trimite un POST la <code>http://localhost:8081/auth/login</code> cu body:</p>
+  <pre><code>{"username": "admin", "password": "parola123", "rememberMe": false}</code></pre>
+  <p>Răspunsul trebuie să fie: <code>{"accessToken": "eyJ...", "refreshToken": "eyJ..."}</code></p>
+  <p>Copiază access token-ul și folosește-l la requesturile următoare ca header: <code>Authorization: Bearer eyJ...</code></p>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial JWT Authentication &nbsp;|&nbsp; <a href="index.html" style="color:#818cf8">Toate tutorialele</a></footer>
+</body>
+</html>

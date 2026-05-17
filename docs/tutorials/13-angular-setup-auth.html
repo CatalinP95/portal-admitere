@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Angular 19 – Setup, AuthService, Login, Register – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout.err{border-color:#ef4444}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #4f46e5}
+    .arrow{color:#818cf8;font-size:1.4rem}
+    .tree{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;margin:16px 0;font-family:'Consolas',monospace;font-size:.85rem;line-height:1.9}
+    .tree .dir{color:#a5b4fc;font-weight:600}
+    .tree .file{color:#7dd3fc}
+    .tree .note{color:#475569;font-style:italic}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+    .checklist{list-style:none;margin:16px 0}
+    .checklist li{padding:8px 0;color:#cbd5e1;border-bottom:1px solid #1e293b;font-size:.92rem}
+    .checklist li::before{content:'✓ ';color:#10b981;font-weight:700}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>Angular 19 – Setup, AuthService, Login & Register</h1>
+    <p>Standalone components, feature modules, formulare reactive, CORS</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ce este Angular și de ce îl folosim</h2>
+    <p>Angular este un framework front-end dezvoltat de Google care oferă o structură completă pentru aplicații web: routing, formulare reactive, HTTP client, change detection. Spre deosebire de React (bibliotecă), Angular vine cu toate aceste instrumente integrate.</p>
+    <p>În proiect folosim Angular ca <strong>single-page application (SPA)</strong> care comunică cu backend-ul exclusiv prin API-ul expus de <strong>API Gateway</strong> (port 8080). Browserul nu cunoaște microserviciile individuale.</p>
+
+    <div class="flow">
+      <div class="step">Browser (4300)</div>
+      <div class="arrow">→</div>
+      <div class="step">API Gateway (8080)</div>
+      <div class="arrow">→</div>
+      <div class="step">user-service / admissions / dormitory</div>
+    </div>
+
+    <h2>Angular 19+ – Standalone Components</h2>
+    <p>Începând cu Angular 17+, aplicațiile nu mai au nevoie de <code>NgModule</code>. Fiecare componentă e <strong>standalone</strong> — importă direct ce are nevoie.</p>
+
+    <table>
+      <tr><th>Angular ≤ 16 (NgModule)</th><th>Angular 17+ (Standalone)</th></tr>
+      <tr><td><code>app.module.ts</code> — declara totul</td><td>Nu există AppModule</td></tr>
+      <tr><td><code>app.component.ts</code></td><td><code>app.ts</code></td></tr>
+      <tr><td><code>BrowserModule</code> în imports</td><td><code>app.config.ts</code> cu providers</td></tr>
+      <tr><td><code>RouterModule.forRoot()</code></td><td><code>provideRouter(routes)</code></td></tr>
+      <tr><td><code>HttpClientModule</code></td><td><code>provideHttpClient()</code></td></tr>
+    </table>
+
+    <h2>Creare proiect</h2>
+    <pre><code><span class="comment"># Din folderul portal-admitere/ (NU din frontend/)</span>
+ng new frontend --routing --style=scss --skip-git
+
+<span class="comment"># ATENȚIE: nu folosi "ng new ." — "." nu e un nume valid de proiect</span></code></pre>
+
+    <div class="callout warn">
+      <p><strong>Eroare frecventă:</strong> <code>ng new .</code> dă eroarea <em>"Data path /name must match pattern"</em>. Soluție: rulează <code>ng new frontend</code> din directorul părinte.</p>
+    </div>
+
+    <h2>Structura proiectului</h2>
+    <div class="tree">
+      <span class="dir">frontend/src/app/</span><br>
+      ├── <span class="file">app.ts</span>            <span class="note">← componenta root (nu app.component.ts)</span><br>
+      ├── <span class="file">app.config.ts</span>    <span class="note">← providers: router, httpClient, interceptors</span><br>
+      ├── <span class="file">app.routes.ts</span>    <span class="note">← definițiile de rute</span><br>
+      ├── <span class="dir">core/</span><br>
+      │   ├── <span class="dir">models/</span><br>
+      │   │   └── <span class="file">auth.models.ts</span>      <span class="note">← interfețe: LoginRequest, AuthResponse…</span><br>
+      │   ├── <span class="dir">services/</span><br>
+      │   │   └── <span class="file">auth.service.ts</span>     <span class="note">← login, register, logout, getToken…</span><br>
+      │   ├── <span class="dir">interceptors/</span><br>
+      │   │   └── <span class="file">jwt.interceptor.ts</span>  <span class="note">← adaugă Bearer token la fiecare request</span><br>
+      │   └── <span class="dir">guards/</span><br>
+      │       ├── <span class="file">auth.guard.ts</span>       <span class="note">← blochează rutele fără autentificare</span><br>
+      │       └── <span class="file">role.guard.ts</span>       <span class="note">← blochează pe bază de rol</span><br>
+      └── <span class="dir">features/</span><br>
+          ├── <span class="dir">auth/login/</span>         <span class="note">← login.ts, login.html, login.scss</span><br>
+          ├── <span class="dir">auth/register/</span>      <span class="note">← register.ts, register.html, register.scss</span><br>
+          ├── <span class="dir">dashboard/</span>          <span class="note">← dashboard.ts, dashboard.html, dashboard.scss</span><br>
+          └── <span class="dir">errors/</span>             <span class="note">← not-found.ts, unauthorized.ts, errors.scss</span>
+    </div>
+
+    <h2>Environment files</h2>
+    <p>URL-ul API-ului se configurează per mediu — în development trimite la <code>localhost:8080</code>, în production la URL-ul de deployment.</p>
+    <pre><code><span class="comment">// environment.development.ts</span>
+<span class="keyword">export const</span> environment = {
+  production: <span class="keyword">false</span>,
+  apiUrl: <span class="string">'http://localhost:8080'</span>
+};
+
+<span class="comment">// environment.ts (production)</span>
+<span class="keyword">export const</span> environment = {
+  production: <span class="keyword">true</span>,
+  apiUrl: <span class="string">'http://localhost:8080'</span>
+};</code></pre>
+
+    <h2>app.config.ts – Providers</h2>
+    <pre><code><span class="keyword">export const</span> appConfig: <span class="type">ApplicationConfig</span> = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideRouter(routes),
+    provideHttpClient(
+      withInterceptors([jwtInterceptor])
+    )
+  ]
+};</code></pre>
+
+    <div class="callout warn">
+      <p><strong>withFetch() – de evitat:</strong> Angular 19 permite <code>withFetch()</code> pentru a folosi Fetch API în loc de XHR. Însă cu Fetch, răspunsurile 4xx (401, 400) pot apărea ca <code>net::ERR_ABORTED</code> în consolă și <strong>nu propagă corect eroarea</strong> la handler-ul din componentă. Soluție: nu folosi <code>withFetch()</code> în combinație cu error handling pe 4xx.</p>
+    </div>
+
+    <h2>AuthService – Token Management</h2>
+    <p>Token-ul JWT se salvează în <code>localStorage</code> (rememberMe = true) sau <code>sessionStorage</code> (sesiune curentă). La fiecare request, interceptorul citește token-ul și îl adaugă ca header.</p>
+    <pre><code><span class="annotation">@Injectable</span>({ providedIn: <span class="string">'root'</span> })
+<span class="keyword">export class</span> <span class="type">AuthService</span> {
+  login(req: <span class="type">LoginRequest</span>): <span class="type">Observable</span>&lt;<span class="type">AuthResponse</span>&gt; {
+    <span class="keyword">return</span> <span class="keyword">this</span>.http.post&lt;<span class="type">AuthResponse</span>&gt;(<span class="string">`${this.base}/login`</span>, req).pipe(
+      tap(res =&gt; <span class="keyword">this</span>.saveTokens(res, req.rememberMe ?? <span class="keyword">false</span>))
+    );
+  }
+
+  logout(): <span class="type">Observable</span>&lt;<span class="keyword">void</span>&gt; {
+    <span class="keyword">const</span> headers = <span class="keyword">new</span> <span class="type">HttpHeaders</span>({
+      <span class="string">'Refresh-Token'</span>: <span class="keyword">this</span>.getRefreshToken() ?? <span class="string">''</span>
+    });
+    <span class="keyword">return</span> <span class="keyword">this</span>.http.post&lt;<span class="keyword">void</span>&gt;(<span class="string">`${this.base}/logout`</span>, {}, { headers }).pipe(
+      tap(() =&gt; <span class="keyword">this</span>.clearTokens())
+    );
+  }
+}</code></pre>
+
+    <div class="callout">
+      <p><strong>De ce Refresh-Token în header?</strong> Backend-ul (<code>/auth/logout</code>) primește refresh token-ul prin header <code>Refresh-Token</code>, nu în body. Dacă nu trimiți header-ul, server-ul returnează 500.</p>
+    </div>
+
+    <h2>Formulare reactive – Validator custom</h2>
+    <p>Formularul de register are un validator la nivel de grup care verifică că cele două parole coincid:</p>
+    <pre><code><span class="keyword">function</span> passwordMatchValidator(control: <span class="type">AbstractControl</span>): <span class="type">ValidationErrors</span> | <span class="keyword">null</span> {
+  <span class="keyword">const</span> password = control.get(<span class="string">'password'</span>)?.value;
+  <span class="keyword">const</span> confirm  = control.get(<span class="string">'confirmPassword'</span>)?.value;
+  <span class="keyword">return</span> password &amp;&amp; confirm &amp;&amp; password !== confirm
+    ? { passwordMismatch: <span class="keyword">true</span> }
+    : <span class="keyword">null</span>;
+}
+
+<span class="comment">// Aplicat pe grup, nu pe câmp individual:</span>
+<span class="keyword">this</span>.form = <span class="keyword">this</span>.fb.group({
+  password:        [<span class="string">''</span>, [Validators.required, Validators.minLength(8)]],
+  confirmPassword: [<span class="string">''</span>, Validators.required]
+}, { validators: passwordMatchValidator });</code></pre>
+
+    <div class="callout warn">
+      <p><strong>markAllAsTouched():</strong> Fără apel explicit, validările apar doar pe câmpurile atinse (blur). La submit, apelează <code>this.form.markAllAsTouched()</code> înainte de <code>if (form.invalid) return</code> — altfel utilizatorul nu vede mesajele de eroare la primul click pe Submit.</p>
+    </div>
+
+    <h2>CORS – configurare API Gateway</h2>
+    <p>Browserul blochează requesturile cross-origin dacă server-ul nu trimite header-ul <code>Access-Control-Allow-Origin</code>. În Spring Cloud Gateway, CORS se configurează în <code>application.yml</code>:</p>
+    <pre><code>spring:
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      globalcors:
+        cors-configurations:
+          <span class="string">'[/**]'</span>:
+            allowedOrigins: <span class="string">"http://localhost:4200,http://localhost:4300"</span>
+            allowedMethods: <span class="string">"*"</span>
+            allowedHeaders: <span class="string">"*"</span>
+            allowCredentials: <span class="keyword">true</span></code></pre>
+
+    <div class="callout err">
+      <p><strong>Port schimbat = CORS blocat:</strong> Dacă muți frontul de pe 4200 pe 4300 (sau orice alt port), trebuie să adaugi noul origin în <code>allowedOrigins</code> și să restartezi Gateway-ul. Fără asta, toate requesturile sunt blocate cu eroarea <em>"No 'Access-Control-Allow-Origin' header"</em>.</p>
+    </div>
+
+    <h2>Alinierea modelelor frontend ↔ backend</h2>
+    <p>Frontend-ul definește interfețe TypeScript care trebuie să corespundă exact cu câmpurile JSON returnate de backend. O discrepanță duce la câmpuri <code>undefined</code> la runtime:</p>
+    <table>
+      <tr><th>Backend <code>AuthResponse.java</code></th><th>Frontend <code>auth.models.ts</code></th></tr>
+      <tr><td><code>accessToken</code></td><td><code>accessToken: string</code></td></tr>
+      <tr><td><code>refreshToken</code></td><td><code>refreshToken: string</code></td></tr>
+      <tr><td><code>tokenType</code></td><td><code>tokenType: string</code></td></tr>
+      <tr><td><code>username</code> ← adăugat în Ziua 13</td><td><code>username: string</code></td></tr>
+      <tr><td><code>role</code></td><td><code>role: string</code></td></tr>
+      <tr><td><code>userId</code></td><td><code>userId: number</code></td></tr>
+    </table>
+    <div class="callout warn">
+      <p><strong>Eroare întâlnită:</strong> Dashboard-ul afișa <em>"Bun venit, undefined!"</em> deoarece backend-ul nu returna câmpul <code>username</code>. Soluție: adăugat <code>username</code> în <code>AuthResponse.java</code> și în toate apelurile <code>new AuthResponse(...)</code> din <code>AuthService.java</code>.</p>
+    </div>
+
+    <h2>Change Detection – ChangeDetectorRef</h2>
+    <p>Răspunsurile HTTP vin uneori din afara zonei Angular (NgZone), iar UI-ul nu se actualizează automat. Soluție: injectează <code>ChangeDetectorRef</code> și apelează <code>detectChanges()</code> după ce modifici starea în error handler:</p>
+    <pre><code><span class="keyword">private</span> cdr = inject(<span class="type">ChangeDetectorRef</span>);
+
+<span class="comment">// În error handler:</span>
+error: err =&gt; {
+  <span class="keyword">this</span>.errorMessage = err.status === <span class="keyword">401</span>
+    ? <span class="string">'Utilizator sau parolă greșite.'</span>
+    : <span class="string">'Eroare de server. Încearcă din nou.'</span>;
+  <span class="keyword">this</span>.loading = <span class="keyword">false</span>;
+  <span class="keyword">this</span>.cdr.detectChanges(); <span class="comment">// forțează update UI</span>
+}</code></pre>
+
+    <h2>Checklist testare Ziua 13</h2>
+    <ul class="checklist">
+      <li>Register cu date valide → redirect la dashboard</li>
+      <li>Submit fără date → toate câmpurile arată "Câmp obligatoriu."</li>
+      <li>Parole diferite → "Parolele nu coincid."</li>
+      <li>Username existent → "Utilizatorul sau emailul există deja." (backend: 400)</li>
+      <li>Login cu parolă greșită → "Utilizator sau parolă greșite." (backend: 401)</li>
+      <li>Login reușit → redirect la /dashboard cu username corect</li>
+    </ul>
+
+    <h2>Întrebări examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">1. Ce diferență există între Angular standalone components și NgModule?</div>
+      <div class="qa-a">NgModule grupează componente, directive și pipe-uri într-un modul care trebuie declarat și importat explicit. Standalone components importă direct dependențele lor — nu necesită un modul intermediar. Angular 17+ recomandă abordarea standalone ca default.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">2. De ce se folosește localStorage pentru "ține-mă minte" și sessionStorage altfel?</div>
+      <div class="qa-a">localStorage persistă datele după închiderea browserului (până la ștergere explicită). sessionStorage se șterge automat când tab-ul sau browserul e închis. Pentru "ține-mă minte" vrem persistență îndelungată → localStorage. Pentru sesiuni normale vrem ca token-ul să expire la închiderea browserului → sessionStorage.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">3. Ce este CORS și de ce e necesar în această arhitectură?</div>
+      <div class="qa-a">CORS (Cross-Origin Resource Sharing) e un mecanism de securitate al browserului care blochează requesturile HTTP către un origin diferit de cel al paginii. Frontend-ul rulează pe portul 4300, backend-ul pe 8080 — origini diferite. Gateway-ul trebuie să trimită headerul <code>Access-Control-Allow-Origin</code> ca să permită requesturile.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">4. De ce adăugăm Refresh-Token în header la logout și nu în body?</div>
+      <div class="qa-a">Backend-ul a fost implementat să citească refresh token-ul din header-ul <code>Refresh-Token</code>, nu din body. Această convenție e comună pentru token-uri de revocare — body-ul unui POST de logout e de obicei gol. Dacă nu trimiți header-ul, backend-ul nu poate identifica ce token să revoce și returnează 500.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">5. Ce face markAllAsTouched() și de ce e necesar la submit?</div>
+      <div class="qa-a">Angular afișează mesajele de validare doar pentru câmpurile "touched" (care au primit focus și l-au pierdut). Dacă utilizatorul apasă Submit fără să atingă niciun câmp, erorile nu apar. <code>markAllAsTouched()</code> marchează toate câmpurile ca touched simultan, forțând afișarea tuturor mesajelor de eroare.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">6. Cum funcționează un validator de grup în Angular Reactive Forms?</div>
+      <div class="qa-a">Un validator de grup primește întregul FormGroup ca argument și poate accesa orice câmp. Returnează un obiect de erori sau null. Se aplică la al doilea argument al <code>fb.group()</code>, în proprietatea <code>validators</code>. Erorile se citesc pe <code>form.errors</code>, nu pe câmpul individual.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">7. De ce withFetch() poate cauza probleme cu error handling?</div>
+      <div class="qa-a">Fetch API și XMLHttpRequest gestionează diferit răspunsurile non-2xx. Cu Fetch, unele răspunsuri 4xx apar ca <code>ERR_ABORTED</code> în Chrome și nu propagă corect eroarea prin pipeline-ul RxJS al Angular HttpClient. Rezultatul: error handler-ul din componentă nu se execută, UI-ul rămâne în starea "loading". Soluție: omite <code>withFetch()</code> și folosește XHR standard.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">8. Ce este ChangeDetectorRef și când e necesar?</div>
+      <div class="qa-a">ChangeDetectorRef permite declanșarea manuală a detecției de schimbări Angular. E necesar când starea componentei se modifică în afara zonei Angular (NgZone) — de exemplu, în callback-uri asincrone venite din biblioteci externe sau din anumite scenarii de HTTP error handling. <code>detectChanges()</code> forțează re-renderizarea template-ului imediat.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Angular Setup și Autentificare</h2>
+
+<div class="callout" style="background:#1e0a2e;border-left:4px solid #c084fc;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Node.js 20+, Angular CLI 19 instalate. Backend user-service pornit pe 8081 (sau Gateway pe 8080).</p>
+</div>
+
+<div style="background:#1e0a2e;border:1px solid #4c1d6e;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#c084fc">Pasul 1 — Creează proiectul Angular</strong>
+  <div style="margin-top:12px">
+    <pre><code>ng new frontend --routing --style=scss --standalone
+cd frontend</code></pre>
+    <p>Creează fișierele de environment:</p>
+    <pre><code># src/environments/environment.ts
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:8080'   // URL-ul API Gateway
+};</code></pre>
+  </div>
+</div>
+
+<div style="background:#1e0a2e;border:1px solid #4c1d6e;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#c084fc">Pasul 2 — Configurează app.config.ts</strong>
+  <div style="margin-top:12px">
+    <p>Înlocuiește conținutul <code>src/app/app.config.ts</code>:</p>
+    <pre><code>import { ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { routes } from './app.routes';
+import { jwtInterceptor } from './interceptors/jwt.interceptor';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideRouter(routes),
+    provideHttpClient(
+      withInterceptors([jwtInterceptor])
+      // jwtInterceptor adaugă automat header-ul Authorization la fiecare request
+    )
+  ]
+};</code></pre>
+  </div>
+</div>
+
+<div style="background:#1e0a2e;border:1px solid #4c1d6e;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#c084fc">Pasul 3 — Creează AuthService</strong>
+  <div style="margin-top:12px">
+    <pre><code>ng generate service services/auth</code></pre>
+    <p>Editează <code>src/app/services/auth.service.ts</code>:</p>
+    <pre><code>@Injectable({ providedIn: 'root' })
+export class AuthService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  login(username: string, password: string, rememberMe: boolean) {
+    return this.http.post&lt;{accessToken: string, refreshToken: string}&gt;(
+      `${this.apiUrl}/auth/login`,
+      { username, password, rememberMe }
+    ).pipe(
+      tap(response => {
+        // rememberMe → localStorage (persistent); altfel → sessionStorage (temporar)
+        const storage = rememberMe ? localStorage : sessionStorage;
+        storage.setItem('accessToken', response.accessToken);
+        storage.setItem('refreshToken', response.refreshToken);
+      })
+    );
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
+
+  logout() {
+    localStorage.removeItem('accessToken');
+    sessionStorage.removeItem('accessToken');
+  }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#1e0a2e;border:1px solid #4c1d6e;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#c084fc">Pasul 4 — Creează Login Component cu Reactive Forms</strong>
+  <div style="margin-top:12px">
+    <pre><code>ng generate component features/auth/login --standalone</code></pre>
+    <p>În <code>login.ts</code>:</p>
+    <pre><code>@Component({ standalone: true, imports: [ReactiveFormsModule, RouterLink], ... })
+export class LoginComponent {
+  form = new FormGroup({
+    username: new FormControl('', [Validators.required]),
+    password: new FormControl('', [Validators.required, Validators.minLength(6)]),
+    rememberMe: new FormControl(false)
+  });
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  onSubmit() {
+    if (this.form.invalid) return;
+    const { username, password, rememberMe } = this.form.value;
+    this.authService.login(username!, password!, rememberMe!).subscribe({
+      next: () => this.router.navigate(['/dashboard']),
+      error: () => alert('Credențiale incorecte')
+    });
+  }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#1e0a2e;border:1px solid #4c1d6e;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#c084fc">Pasul 5 — Pornește aplicația Angular</strong>
+  <div style="margin-top:12px">
+    <pre><code>cd frontend
+ng serve --port 4300</code></pre>
+    <p>Flag-ul <code>--port 4300</code> este important — backend-ul permite CORS doar pentru <code>localhost:4300</code>.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Deschide <code>http://localhost:4300</code> → pagina de login. Introduce credențialele unui user din DB → trebuie să redirecționeze la <code>/dashboard</code>.</p>
+  <p>Verifică în F12 → Application → Storage → <code>accessToken</code> prezent în localStorage sau sessionStorage (în funcție de bifarea "Ține-mă minte").</p>
+</div>
+</div>
+
+  <footer>Ziua 13 — Portal Admitere · Angular 19 Setup</footer>
+</body>
+</html>

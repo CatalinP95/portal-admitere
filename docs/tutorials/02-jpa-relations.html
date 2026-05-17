@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JPA – Entități, Relații, Repository, JPQL</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#065f46,#0f766e);padding:48px 24px;text-align:center}
+    header h1{font-size:2.2rem;color:#fff;font-weight:700}
+    header p{color:#a7f3d0;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#34d399;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#6ee7b7;margin:22px 0 8px}
+    p{color:#cbd5e1;margin-bottom:14px}
+    ul,ol{color:#cbd5e1;padding-left:22px;margin-bottom:14px}
+    li{margin-bottom:6px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:22px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#7dd3fc}
+    .kw{color:#f472b6}
+    .ann{color:#34d399}
+    .str{color:#fbbf24}
+    .cmt{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .num{color:#fb923c}
+    .callout{background:#022c22;border-left:4px solid #34d399;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b;background:#1c1207}
+    .callout.danger{border-color:#ef4444;background:#1c0607}
+    .callout.info{border-color:#38bdf8;background:#0c2230}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#6ee7b7;padding:11px 14px;text-align:left;font-size:.9rem;border-bottom:2px solid #334155}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem;vertical-align:top}
+    td code{font-size:.83rem;background:#0f172a;padding:2px 6px;border-radius:4px}
+    .rel-diagram{display:flex;gap:20px;flex-wrap:wrap;margin:20px 0;align-items:center}
+    .entity{background:#1e293b;border:2px solid #334155;border-radius:8px;padding:16px 20px;min-width:160px}
+    .entity h4{color:#6ee7b7;font-size:.9rem;margin-bottom:8px;font-weight:700}
+    .entity .field{color:#94a3b8;font-size:.82rem;padding:2px 0}
+    .entity .field.pk{color:#fbbf24}
+    .entity .field.fk{color:#f472b6}
+    .rel-line{display:flex;align-items:center;color:#6366f1;font-size:1.3rem;align-self:center;font-weight:bold}
+    .qa{background:#022c22;border:1px solid #065f46;border-radius:8px;padding:18px 22px;margin:14px 0}
+    .qa .q{color:#34d399;font-weight:600;margin-bottom:8px}
+    .qa .a{color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:50px}
+  </style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+<header>
+  <h1>JPA – Entități, Relații, Repository, JPQL</h1>
+  <p>@Entity, @Id, @OneToMany, JpaRepository, @Transactional, query methods, JPQL</p>
+</header>
+
+<div class="container">
+
+<h2>1. Ce este JPA și cum funcționează?</h2>
+<p>JPA (Java Persistence API) este un standard Java pentru maparea obiectelor Java la tabele din baza de date relațională. Hibernate este implementarea JPA folosită de Spring Boot.</p>
+<ul>
+  <li><strong>ORM (Object-Relational Mapping)</strong> — mapează clasa Java la tabelă, câmpul la coloană, obiectul la rând</li>
+  <li><strong>Hibernate</strong> — generează automat SQL din cod Java, gestionează conexiunile și tranzacțiile</li>
+  <li><strong>Spring Data JPA</strong> — layer deasupra JPA care generează repository-uri automat</li>
+</ul>
+
+<h2>2. @Entity – definirea unei entități</h2>
+
+<pre><code><span class="ann">@Entity</span>                              <span class="cmt">// Marchează clasa ca entitate JPA (mapată pe tabelă)</span>
+<span class="ann">@Table</span>(name = <span class="str">"users"</span>)              <span class="cmt">// Specifică explicit numele tabelei (dacă diferă de clasă)</span>
+<span class="kw">public class</span> <span class="type">User</span> {
+
+    <span class="ann">@Id</span>                              <span class="cmt">// Câmpul este cheia primară (PRIMARY KEY)</span>
+    <span class="ann">@GeneratedValue</span>(strategy = <span class="type">GenerationType</span>.IDENTITY)
+    <span class="cmt">// IDENTITY = auto-increment în MySQL (id gestionat de DB)</span>
+    <span class="cmt">// SEQUENCE = secvență (PostgreSQL)</span>
+    <span class="cmt">// AUTO = alege automat în funcție de DB</span>
+    <span class="cmt">// TABLE = tabelă separată cu contor (rar)</span>
+    <span class="kw">private</span> Long id;
+
+    <span class="ann">@Column</span>(nullable = <span class="kw">false</span>, unique = <span class="kw">true</span>, length = <span class="num">50</span>)
+    <span class="cmt">// nullable=false → NOT NULL în SQL</span>
+    <span class="cmt">// unique=true → UNIQUE constraint</span>
+    <span class="cmt">// length=50 → VARCHAR(50)</span>
+    <span class="kw">private</span> String username;
+
+    <span class="ann">@Column</span>(nullable = <span class="kw">false</span>, unique = <span class="kw">true</span>)
+    <span class="kw">private</span> String email;
+
+    <span class="ann">@Column</span>(nullable = <span class="kw">false</span>)
+    <span class="kw">private</span> String password;      <span class="cmt">// hash BCrypt, NU parola plain text</span>
+
+    <span class="ann">@Enumerated</span>(<span class="type">EnumType</span>.STRING)    <span class="cmt">// stochează "STUDENT" sau "ADMIN" ca text</span>
+    <span class="cmt">// EnumType.ORDINAL ar stoca 0, 1 — PERICULOS (se poate schimba ordinea)</span>
+    <span class="ann">@Column</span>(nullable = <span class="kw">false</span>)
+    <span class="kw">private</span> <span class="type">Role</span> role = <span class="type">Role</span>.STUDENT;
+
+    <span class="ann">@Column</span>(nullable = <span class="kw">false</span>)
+    <span class="kw">private boolean</span> enabled = <span class="kw">true</span>;
+
+    <span class="cmt">// Constructori, getteri, setteri — necesari pentru JPA</span>
+    <span class="cmt">// JPA necesită un constructor fără argumente (poate fi protected)</span>
+}</code></pre>
+
+<h3>Adnotările @Column detaliate</h3>
+<table>
+  <tr><th>Atribut</th><th>Tip</th><th>Default</th><th>Efect în SQL</th></tr>
+  <tr><td><code>name</code></td><td>String</td><td>numele câmpului</td><td>Setează numele coloanei în DB</td></tr>
+  <tr><td><code>nullable</code></td><td>boolean</td><td>true</td><td>NOT NULL dacă false</td></tr>
+  <tr><td><code>unique</code></td><td>boolean</td><td>false</td><td>UNIQUE constraint</td></tr>
+  <tr><td><code>length</code></td><td>int</td><td>255</td><td>VARCHAR(length) pentru String</td></tr>
+  <tr><td><code>precision</code></td><td>int</td><td>0</td><td>Zifre totale pentru DECIMAL</td></tr>
+  <tr><td><code>scale</code></td><td>int</td><td>0</td><td>Zifre după virgulă pentru DECIMAL</td></tr>
+  <tr><td><code>insertable</code></td><td>boolean</td><td>true</td><td>Dacă false, coloana e omisă din INSERT</td></tr>
+  <tr><td><code>updatable</code></td><td>boolean</td><td>true</td><td>Dacă false, coloana e omisă din UPDATE</td></tr>
+</table>
+
+<h2>3. UserProfile – @OneToOne cu User</h2>
+
+<pre><code><span class="ann">@Entity</span>
+<span class="ann">@Table</span>(name = <span class="str">"user_profiles"</span>)
+<span class="kw">public class</span> <span class="type">UserProfile</span> {
+
+    <span class="ann">@Id</span>
+    <span class="ann">@GeneratedValue</span>(strategy = <span class="type">GenerationType</span>.IDENTITY)
+    <span class="kw">private</span> Long id;
+
+    <span class="cmt">// Owner-ul relației — UserProfile deține coloana FK user_id</span>
+    <span class="ann">@OneToOne</span>(fetch = <span class="type">FetchType</span>.LAZY)
+    <span class="ann">@JoinColumn</span>(name = <span class="str">"user_id"</span>, nullable = <span class="kw">false</span>)
+    <span class="cmt">// @JoinColumn specifică coloana FK din tabelul USER_PROFILES</span>
+    <span class="cmt">// name="user_id" → coloana se numește user_id în DB</span>
+    <span class="kw">private</span> <span class="type">User</span> user;
+
+    <span class="ann">@Column</span>(length = <span class="num">100</span>)
+    <span class="kw">private</span> String firstName;
+
+    <span class="ann">@Column</span>(length = <span class="num">100</span>)
+    <span class="kw">private</span> String lastName;
+
+    <span class="ann">@Column</span>(unique = <span class="kw">true</span>, length = <span class="num">13</span>)
+    <span class="kw">private</span> String cnp;
+
+    <span class="kw">private</span> <span class="type">LocalDate</span> dateOfBirth;    <span class="cmt">// mapată ca DATE în SQL</span>
+    <span class="kw">private</span> String phone;
+}</code></pre>
+
+<h2>4. Diagrama relațiilor complete</h2>
+
+<div class="rel-diagram">
+  <div class="entity">
+    <h4>users</h4>
+    <div class="field pk">id (PK, AUTO)</div>
+    <div class="field">username (UNIQUE)</div>
+    <div class="field">email (UNIQUE)</div>
+    <div class="field">password</div>
+    <div class="field">role (ENUM)</div>
+    <div class="field">enabled</div>
+  </div>
+  <div class="rel-line">←1:1→</div>
+  <div class="entity">
+    <h4>user_profiles</h4>
+    <div class="field pk">id (PK, AUTO)</div>
+    <div class="field fk">user_id (FK→users)</div>
+    <div class="field">first_name</div>
+    <div class="field">last_name</div>
+    <div class="field">cnp (UNIQUE)</div>
+  </div>
+</div>
+
+<div class="rel-diagram">
+  <div class="entity">
+    <h4>users</h4>
+    <div class="field pk">id (PK)</div>
+  </div>
+  <div class="rel-line">←1:N→</div>
+  <div class="entity">
+    <h4>refresh_tokens</h4>
+    <div class="field pk">id (PK)</div>
+    <div class="field fk">user_id (FK→users)</div>
+    <div class="field">token</div>
+    <div class="field">revoked</div>
+    <div class="field">expiry_date</div>
+  </div>
+</div>
+
+<h2>5. Tipuri de relații JPA</h2>
+<table>
+  <tr><th>Adnotare</th><th>Relație</th><th>FK deținut de</th><th>Exemplu în proiect</th></tr>
+  <tr><td><code>@OneToOne</code></td><td>1:1 — un User are un UserProfile</td><td>UserProfile (owner)</td><td>User ↔ UserProfile</td></tr>
+  <tr><td><code>@OneToMany</code></td><td>1:N — un User are mai multe RefreshToken</td><td>RefreshToken (owner)</td><td>User → RefreshToken</td></tr>
+  <tr><td><code>@ManyToOne</code></td><td>N:1 — mai multe RefreshToken la un User</td><td>RefreshToken (owner)</td><td>RefreshToken → User</td></tr>
+  <tr><td><code>@ManyToMany</code></td><td>N:M — tabelă intermediară</td><td>Tabelă JOIN</td><td>Announcement ↔ Tag</td></tr>
+</table>
+
+<h3>@OneToMany + @ManyToOne (bidirecțional)</h3>
+<pre><code><span class="cmt">// User.java — partea @OneToMany (fără FK în users)</span>
+<span class="ann">@OneToMany</span>(
+    mappedBy = <span class="str">"user"</span>,          <span class="cmt">// câmpul din RefreshToken care deține FK</span>
+    cascade = <span class="type">CascadeType</span>.ALL,  <span class="cmt">// ștergerea User șterge și toate token-urile sale</span>
+    orphanRemoval = <span class="kw">true</span>,       <span class="cmt">// dacă scoți token din colecție, se șterge din DB</span>
+    fetch = <span class="type">FetchType</span>.LAZY      <span class="cmt">// nu încarcă lista la fiecare findUser()</span>
+)
+<span class="kw">private</span> List&lt;<span class="type">RefreshToken</span>&gt; refreshTokens = <span class="kw">new</span> ArrayList&lt;&gt;();
+
+<span class="cmt">// RefreshToken.java — owner-ul relației (deține FK user_id)</span>
+<span class="ann">@ManyToOne</span>(fetch = <span class="type">FetchType</span>.LAZY)
+<span class="ann">@JoinColumn</span>(name = <span class="str">"user_id"</span>, nullable = <span class="kw">false</span>)
+<span class="kw">private</span> <span class="type">User</span> user;</code></pre>
+
+<h2>6. CascadeType – propagarea operațiilor</h2>
+<table>
+  <tr><th>Tip</th><th>Ce propagă</th><th>Exemplu</th></tr>
+  <tr><td><code>PERSIST</code></td><td>save() → salvează și entitățile asociate</td><td>Salvezi User → salvează și UserProfile</td></tr>
+  <tr><td><code>MERGE</code></td><td>merge() → actualizează și entitățile asociate</td><td>Actualizezi User → actualizează și UserProfile</td></tr>
+  <tr><td><code>REMOVE</code></td><td>delete() → șterge și entitățile asociate</td><td>Ștergi User → șterge și UserProfile</td></tr>
+  <tr><td><code>REFRESH</code></td><td>refresh() → reîncarcă și entitățile asociate</td><td>-</td></tr>
+  <tr><td><code>DETACH</code></td><td>detach() → detașează și entitățile asociate</td><td>-</td></tr>
+  <tr><td><code>ALL</code></td><td>Toate de mai sus</td><td>Cel mai des folosit</td></tr>
+</table>
+
+<h2>7. FetchType: LAZY vs EAGER</h2>
+<table>
+  <tr><th>Tip</th><th>Comportament</th><th>Default pentru</th></tr>
+  <tr><td><code>LAZY</code></td><td>Datele se încarcă doar când accesezi câmpul</td><td>@OneToMany, @ManyToMany</td></tr>
+  <tr><td><code>EAGER</code></td><td>Datele se încarcă automat cu entitatea parentă</td><td>@ManyToOne, @OneToOne</td></tr>
+</table>
+
+<div class="callout warn">
+  <p><strong>Problema N+1 cu EAGER:</strong> Dacă ai 100 User-i cu EAGER pe Announcements, Hibernate face 1 query pentru useri + 100 query-uri pentru anunțurile fiecărui user = 101 query-uri! Soluție: LAZY + JOIN FETCH în JPQL când ai nevoie de date.</p>
+</div>
+
+<h2>8. JpaRepository – toate metodele disponibile</h2>
+
+<pre><code><span class="kw">public interface</span> <span class="type">UserRepository</span> <span class="kw">extends</span> JpaRepository&lt;<span class="type">User</span>, Long&gt; {
+    <span class="cmt">// JpaRepository&lt;Entity, IdType&gt;</span>
+    <span class="cmt">// Toate metodele de mai jos sunt disponibile automat:</span>
+
+    <span class="cmt">// CRUD de bază</span>
+    <span class="cmt">// save(User entity)             — INSERT sau UPDATE (merge)</span>
+    <span class="cmt">// findById(Long id)             — SELECT * WHERE id=?  → Optional&lt;User&gt;</span>
+    <span class="cmt">// findAll()                     — SELECT * FROM users  → List&lt;User&gt;</span>
+    <span class="cmt">// findAll(Pageable)             — SELECT * LIMIT x OFFSET y → Page&lt;User&gt;</span>
+    <span class="cmt">// deleteById(Long id)           — DELETE WHERE id=?</span>
+    <span class="cmt">// delete(User entity)           — DELETE WHERE id=entity.id</span>
+    <span class="cmt">// deleteAll()                   — DELETE FROM users (atentie!)</span>
+    <span class="cmt">// count()                       — SELECT COUNT(*)</span>
+    <span class="cmt">// existsById(Long id)           — SELECT 1 WHERE id=?</span>
+
+    <span class="cmt">// Metode custom derivate din nume</span>
+    Optional&lt;<span class="type">User</span>&gt; findByUsername(String username);
+    <span class="cmt">// → SELECT * FROM users WHERE username = ?</span>
+
+    boolean existsByUsername(String username);
+    <span class="cmt">// → SELECT COUNT(*) > 0 WHERE username = ?</span>
+
+    boolean existsByEmail(String email);
+    <span class="cmt">// → SELECT COUNT(*) > 0 WHERE email = ?</span>
+
+    Optional&lt;<span class="type">User</span>&gt; findByEmail(String email);
+}</code></pre>
+
+<h2>9. Derived Query Methods – convenții de denumire</h2>
+<p>Spring Data JPA generează automat query-ul SQL din numele metodei.</p>
+<table>
+  <tr><th>Metodă</th><th>SQL generat</th></tr>
+  <tr><td><code>findByUsername(String u)</code></td><td>WHERE username = ?</td></tr>
+  <tr><td><code>findByUsernameAndEmail(String u, String e)</code></td><td>WHERE username = ? AND email = ?</td></tr>
+  <tr><td><code>findByUsernameOrEmail(String u, String e)</code></td><td>WHERE username = ? OR email = ?</td></tr>
+  <tr><td><code>findByEnabledTrue()</code></td><td>WHERE enabled = true</td></tr>
+  <tr><td><code>findByRoleOrderByUsernameAsc(Role r)</code></td><td>WHERE role = ? ORDER BY username ASC</td></tr>
+  <tr><td><code>existsByUsername(String u)</code></td><td>SELECT COUNT(*) > 0 WHERE username = ?</td></tr>
+  <tr><td><code>countByRole(Role r)</code></td><td>SELECT COUNT(*) WHERE role = ?</td></tr>
+  <tr><td><code>deleteByEnabled(boolean e)</code></td><td>DELETE WHERE enabled = ?</td></tr>
+  <tr><td><code>findByUserIdOrderByTimestampDesc(Long id)</code></td><td>WHERE user_id = ? ORDER BY timestamp DESC</td></tr>
+</table>
+
+<h2>10. @Query – JPQL și SQL nativ</h2>
+
+<pre><code><span class="cmt">// RefreshTokenRepository.java</span>
+<span class="kw">public interface</span> <span class="type">RefreshTokenRepository</span> <span class="kw">extends</span> JpaRepository&lt;<span class="type">RefreshToken</span>, Long&gt; {
+
+    Optional&lt;<span class="type">RefreshToken</span>&gt; findByToken(String token);
+
+    <span class="cmt">// @Query cu JPQL (Java Persistence Query Language)</span>
+    <span class="cmt">// Operează pe clase Java, nu pe tabele SQL</span>
+    <span class="ann">@Query</span>(<span class="str">"UPDATE RefreshToken r SET r.revoked = true WHERE r.user = :user"</span>)
+    <span class="ann">@Modifying</span>   <span class="cmt">// obligatoriu pentru UPDATE/DELETE în @Query</span>
+    <span class="ann">@Transactional</span>
+    <span class="kw">void</span> revokeAllByUser(<span class="ann">@Param</span>(<span class="str">"user"</span>) <span class="type">User</span> user);
+
+    <span class="cmt">// @Query cu SQL nativ (nativeQuery=true)</span>
+    <span class="ann">@Query</span>(value = <span class="str">"SELECT * FROM refresh_tokens WHERE user_id = ?1 AND revoked = false"</span>,
+           nativeQuery = <span class="kw">true</span>)
+    List&lt;<span class="type">RefreshToken</span>&gt; findActiveTokensForUser(Long userId);
+}
+
+<span class="cmt">// UserProfileRepository.java</span>
+<span class="kw">public interface</span> <span class="type">UserProfileRepository</span> <span class="kw">extends</span> JpaRepository&lt;<span class="type">UserProfile</span>, Long&gt; {
+    Optional&lt;<span class="type">UserProfile</span>&gt; findByUserId(Long userId);
+    <span class="cmt">// → SELECT * FROM user_profiles WHERE user_id = ?</span>
+
+    boolean existsByCnp(String cnp);
+    <span class="cmt">// → SELECT COUNT(*) > 0 WHERE cnp = ?</span>
+}</code></pre>
+
+<h2>11. @Transactional – gestionarea tranzacțiilor</h2>
+
+<pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">AuthService</span> {
+
+    <span class="ann">@Transactional</span>   <span class="cmt">// Toată metoda rulează într-o singură tranzacție DB</span>
+    <span class="kw">public</span> <span class="type">AuthResponse</span> register(<span class="type">RegisterRequest</span> request) {
+        <span class="cmt">// Dacă oricare din aceste operații eșuează,</span>
+        <span class="cmt">// TOATE sunt anulate (rollback)</span>
+        <span class="type">User</span> saved = userRepository.save(user);
+        saveRefreshToken(saved, rawRefreshToken);
+        <span class="cmt">// Commit automat la finalul metodei dacă nu e excepție</span>
+        <span class="kw">return new</span> <span class="type">AuthResponse</span>(...);
+    }
+}</code></pre>
+
+<table>
+  <tr><th>Atribut @Transactional</th><th>Valoare default</th><th>Efect</th></tr>
+  <tr><td><code>readOnly</code></td><td>false</td><td>readOnly=true optimizează query-urile de citire (Hibernate nu trackează modificările)</td></tr>
+  <tr><td><code>rollbackFor</code></td><td>RuntimeException</td><td>Excepțiile verificate nu fac rollback implicit — trebuie specificate</td></tr>
+  <tr><td><code>propagation</code></td><td>REQUIRED</td><td>REQUIRED: folosește tranzacția existentă sau creează una nouă</td></tr>
+  <tr><td><code>isolation</code></td><td>DEFAULT</td><td>Nivelul de izolație a tranzacției (READ_COMMITTED etc.)</td></tr>
+</table>
+
+<div class="callout">
+  <p><strong>Regulă de bază:</strong> @Transactional se pune pe metode din @Service (business layer), nu pe @Repository sau @Controller. Pune pe operații care modifică mai multe tabele simultan și care trebuie să fie atomice.</p>
+</div>
+
+<h2>12. JPQL – Java Persistence Query Language</h2>
+<p>JPQL operează pe <strong>clase Java</strong>, nu pe tabele SQL. Hibernate traduce JPQL în SQL.</p>
+
+<pre><code><span class="cmt">// JPQL — folosești clasa Java și câmpul Java (nu tabelul/coloana SQL)</span>
+<span class="str">"SELECT u FROM User u WHERE u.role = :role"</span>
+<span class="cmt">//         ↑ clasa Java    ↑ câmpul Java</span>
+
+<span class="str">"SELECT u FROM User u WHERE u.enabled = true ORDER BY u.username ASC"</span>
+
+<span class="str">"UPDATE RefreshToken r SET r.revoked = true WHERE r.user = :user"</span>
+
+<span class="str">"SELECT p FROM UserProfile p WHERE p.user.id = :userId"</span>
+<span class="cmt">// navigare prin relații cu punct!</span>
+
+<span class="cmt">// JOIN FETCH — rezolvă problema N+1</span>
+<span class="str">"SELECT u FROM User u LEFT JOIN FETCH u.refreshTokens WHERE u.id = :id"</span>
+<span class="cmt">// Un singur query care aduce și token-urile (nu N query-uri separate)</span></code></pre>
+
+<h2>13. Problema FK în teste și soluția</h2>
+<p>Eroare frecventă: <code>ConstraintViolationException: user_profiles.user_id references users.id</code></p>
+
+<pre><code><span class="ann">@BeforeEach</span>
+<span class="kw">void</span> setUp() {
+    <span class="cmt">// GREȘIT — aruncă ConstraintViolationException</span>
+    userRepository.deleteAll();     <span class="cmt">// user_profiles.user_id referențiează users.id!</span>
+    userProfileRepository.deleteAll();
+
+    <span class="cmt">// CORECT — întâi ștergem entitățile cu FK, apoi entitatea referențiată</span>
+    userProfileRepository.deleteAll();   <span class="cmt">// are FK → users</span>
+    refreshTokenRepository.deleteAll();  <span class="cmt">// are FK → users</span>
+    userRepository.deleteAll();          <span class="cmt">// în final ștergem users</span>
+}</code></pre>
+
+<h2>14. Adnotări @Entity complete — rezumat</h2>
+<table>
+  <tr><th>Adnotare</th><th>Unde se pune</th><th>Ce face</th></tr>
+  <tr><td><code>@Entity</code></td><td>Clasă</td><td>Marchează clasa ca entitate JPA — trebuie să aibă @Id</td></tr>
+  <tr><td><code>@Table(name="...")</code></td><td>Clasă</td><td>Specifică explicit numele tabelei (dacă diferă)</td></tr>
+  <tr><td><code>@Id</code></td><td>Câmp</td><td>Cheia primară a entității</td></tr>
+  <tr><td><code>@GeneratedValue</code></td><td>Câmp @Id</td><td>Strategia de generare a ID-ului (IDENTITY, SEQUENCE, AUTO)</td></tr>
+  <tr><td><code>@Column</code></td><td>Câmp</td><td>Customizare coloană: nullable, unique, length, name</td></tr>
+  <tr><td><code>@Enumerated</code></td><td>Câmp Enum</td><td>STRING (text) sau ORDINAL (număr) în DB</td></tr>
+  <tr><td><code>@OneToOne</code></td><td>Câmp</td><td>Relație 1:1 cu altă entitate</td></tr>
+  <tr><td><code>@OneToMany</code></td><td>Câmp colecție</td><td>Relație 1:N (nu deține FK)</td></tr>
+  <tr><td><code>@ManyToOne</code></td><td>Câmp entitate</td><td>Relație N:1 (deține FK)</td></tr>
+  <tr><td><code>@ManyToMany</code></td><td>Câmp colecție</td><td>Relație N:M (tabelă join intermediară)</td></tr>
+  <tr><td><code>@JoinColumn</code></td><td>Câmp relație</td><td>Specifică numele coloanei FK</td></tr>
+  <tr><td><code>@JoinTable</code></td><td>Câmp @ManyToMany</td><td>Specifică tabela intermediară și coloanele de join</td></tr>
+</table>
+
+<h2>15. Întrebări posibile la examen</h2>
+
+<div class="qa">
+  <div class="q">Q: Ce este JPA și care este relația cu Hibernate?</div>
+  <div class="a">JPA (Java Persistence API) este un standard Java (specificație, nu implementare) care definește cum se mapează obiectele Java la baze de date relaționale. Hibernate este cea mai populară implementare a JPA. Spring Boot folosește Hibernate ca implementare JPA implicit. Spring Data JPA adaugă un layer deasupra care generează automat repository-urile din interfețe.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Care este diferența dintre @OneToMany și @ManyToOne? Cine deține FK-ul?</div>
+  <div class="a">@ManyToOne deține FK-ul — coloana foreign key se află în tabela entității care are @ManyToOne. @OneToMany NU deține FK-ul și trebuie să aibă mappedBy care indică câmpul din cealaltă entitate. Exemplu: RefreshToken are @ManyToOne User → tabelul refresh_tokens are coloana user_id (FK). User are @OneToMany RefreshToken mappedBy="user" → tabela users NU are o coloană extra.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face mappedBy și de ce e important?</div>
+  <div class="a">mappedBy spune JPA că această parte a relației NU deține FK-ul în baza de date — cealaltă entitate îl deține. Fără mappedBy pe una din părți, JPA ar crea coloane FK pe AMBELE tabele sau o tabelă de join. Cu mappedBy="user" pe @OneToMany din User, JPA știe că FK-ul (user_id) se află în tabela RefreshToken și folosește acea coloană pentru join.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Diferența dintre FetchType.LAZY și EAGER? Ce problemă rezolvă LAZY?</div>
+  <div class="a">EAGER: Hibernate include datele asociate în query-ul principal (LEFT JOIN) — datele sunt mereu disponibile dar cresc volumul. LAZY: Hibernate generează un query separat doar când accesezi câmpul — economisești resurse dacă nu ai nevoie de date. Problema N+1: dacă ai 100 useri cu EAGER pe announcements, Hibernate face 101 query-uri (1 pentru useri + 100 pentru anunțuri). LAZY rezolvă: face query suplimentar doar când accesezi câmpul.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @Transactional și când apare rollback?</div>
+  <div class="a">@Transactional înfășoară metoda într-o tranzacție DB. Toate operațiile din metodă fie se execută complet (commit), fie niciuna (rollback). Rollback automat apare la: RuntimeException și Error. Excepțiile checked (IOException) NU fac rollback implicit — trebuie specificate cu rollbackFor. Se poate configura: @Transactional(rollbackFor = Exception.class) pentru orice excepție.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Diferența dintre JPQL și SQL nativ? Când folosești fiecare?</div>
+  <div class="a">JPQL operează pe clase Java și câmpuri Java (nu pe tabele/coloane SQL). Hibernate traduce JPQL în SQL specific fiecărei baze de date — portabil între MySQL, PostgreSQL, H2. SQL nativ (nativeQuery=true) este SQL direct, specific bazei de date — mai flexibil pentru query-uri complexe dar nu este portabil. Folosești JPQL pentru interogări standard (portabilitate), SQL nativ pentru funcții specifice DB-ului sau optimizări de performanță.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @Modifying și când este necesar?</div>
+  <div class="a">@Modifying este necesar pe metode @Query care fac UPDATE sau DELETE (nu SELECT). Fără @Modifying, Spring Data JPA aruncă InvalidDataAccessApiUsageException. Trebuie combinat cu @Transactional deoarece operațiile de modificare necesită tranzacție activă. Exemplu: revokeAllByUser() marchează toate token-urile unui user ca revocate cu un singur UPDATE.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce este orphanRemoval și cum diferă de CascadeType.REMOVE?</div>
+  <div class="a">CascadeType.REMOVE: când ștergi entitatea parentă, se șterg și copiii. orphanRemoval=true: când scoți un copil din colecție (parentEntity.getChildren().remove(child)) fără să îl ștergi explicit, Hibernate îl șterge din DB. orphanRemoval este mai strict — gestionează cazul când deconectezi o entitate de la parent-ul ei. De obicei se folosesc împreună: cascade=ALL, orphanRemoval=true.</div>
+</div>
+
+</div>
+
+<div class="container">
+<h2>16. Implementare pas cu pas — JPA Entități și Relații</h2>
+
+<div class="callout" style="background:#022c22;border-left:4px solid #34d399;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Spring Boot cu spring-boot-starter-data-jpa și driver MySQL în pom.xml (Tutorial 00). MySQL pornit prin Docker.</p>
+</div>
+
+<div style="background:#031a13;border:1px solid #065f46;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#34d399">Pasul 1 — Creează entitatea principală</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>model/User.java</code>. Fiecare câmp devine o coloană în tabela <code>users</code>:</p>
+    <pre><code>@Entity
+@Table(name = "users")
+@Data
+@NoArgsConstructor
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // AUTO_INCREMENT în MySQL
+    private Long id;
+
+    @Column(unique = true, nullable = false, length = 50)
+    private String username;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Enumerated(EnumType.STRING)  // stochează "ADMIN" nu "0" în DB
+    @Column(nullable = false)
+    private Role role;
+}</code></pre>
+    <p>Creează enum-ul <code>model/Role.java</code>:</p>
+    <pre><code>public enum Role { ADMIN, SECRETARIAT, STUDENT }</code></pre>
+  </div>
+</div>
+
+<div style="background:#031a13;border:1px solid #065f46;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#34d399">Pasul 2 — Creează relație @OneToOne</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>model/UserProfile.java</code> — profil detaliat legat 1:1 de User:</p>
+    <pre><code>@Entity
+@Table(name = "user_profiles")
+@Data
+@NoArgsConstructor
+public class UserProfile {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true)  // coloana FK în tabela user_profiles
+    private User user;
+
+    private String firstName;
+    private String lastName;
+    private String phone;
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#031a13;border:1px solid #065f46;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#34d399">Pasul 3 — Creează Repository pentru fiecare entitate</strong>
+  <div style="margin-top:12px">
+    <pre><code>@Repository
+public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+    Optional&lt;User&gt; findByUsername(String username);
+    boolean existsByEmail(String email);
+}</code></pre>
+    <pre><code>@Repository
+public interface UserProfileRepository extends JpaRepository&lt;UserProfile, Long&gt; {
+    Optional&lt;UserProfile&gt; findByUserId(Long userId);
+}</code></pre>
+    <p>Spring Data generează automat implementările — nu trebuie să scrii nicio metodă în corp.</p>
+  </div>
+</div>
+
+<div style="background:#031a13;border:1px solid #065f46;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#34d399">Pasul 4 — Verifică că Hibernate creează tabelele</strong>
+  <div style="margin-top:12px">
+    <p>Cu <code>ddl-auto: update</code> în application.yml, la pornirea aplicației Hibernate execută automat:</p>
+    <pre><code>CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    role VARCHAR(20) NOT NULL
+);</code></pre>
+    <p>Activează temporar <code>show-sql: true</code> în application.yml să vezi SQL-ul generat în consolă.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Pornește aplicația. Dacă nu există erori, tabelele au fost create. Conectează-te la MySQL și verifică:</p>
+  <pre><code>docker exec -it portal-mysql mysql -u root -proot portaldb -e "SHOW TABLES;"</code></pre>
+  <p>Trebuie să apară: <code>users</code>, <code>user_profiles</code>.</p>
+</div>
+</div>
+
+<footer>Portal Admitere – Tutorial 02: JPA Entități, Relații, Repository &nbsp;|&nbsp; <a href="index.html" style="color:#34d399">Toate tutorialele</a></footer>
+</body>
+</html>

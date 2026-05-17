@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AOP + API Gateway + Circuit Breaker – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #4f46e5}
+    .step.gray{background:#1e293b;color:#94a3b8;border-color:#334155}
+    .arrow{color:#818cf8;font-size:1.4rem}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    .startup-chain{display:flex;flex-direction:column;gap:0;margin:20px 0}
+    .sc-row{display:flex;align-items:stretch;gap:0}
+    .sc-num{background:#4f46e5;color:#fff;font-weight:700;font-size:1.1rem;width:44px;display:flex;align-items:center;justify-content:center;border-radius:8px 0 0 8px;flex-shrink:0}
+    .sc-body{background:#1e293b;border:1px solid #334155;border-left:none;border-radius:0 8px 8px 0;padding:12px 16px;flex:1;margin-bottom:8px}
+    .sc-title{color:#a5b4fc;font-weight:600;font-size:.95rem}
+    .sc-desc{color:#94a3b8;font-size:.85rem;margin-top:4px}
+    .sc-arrow{color:#4f46e5;font-size:1.3rem;text-align:center;margin:-2px 0 2px 22px}
+    .cb-state{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:700;margin-right:6px}
+    .cb-closed{background:#064e3b;color:#34d399}
+    .cb-open{background:#7f1d1d;color:#f87171}
+    .cb-half{background:#78350f;color:#fbbf24}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>⚡ AOP + API Gateway + Circuit Breaker</h1>
+    <p>@Aspect logging automat, rate limiting, LoggingFilter, Circuit Breaker pe 2 servicii</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ordinea de pornire a microserviciilor</h2>
+    <p>Microserviciile au un <strong>lanț de dependențe</strong> la startup. Dacă pornești în ordine greșită, serviciile pornesc cu configurație incompletă sau nu se pot înregistra în registry.</p>
+
+    <div class="startup-chain">
+      <div class="sc-row">
+        <div class="sc-num">1</div>
+        <div class="sc-body">
+          <div class="sc-title">config-server — port 8888</div>
+          <div class="sc-desc">Servește configurația (JWT secret, DB URL, expiry) pentru toate celelalte. Dacă nu e up la pornire, serviciile folosesc valorile locale (fallback <code>optional:</code>), dar proprietățile externalizate nu se încarcă.</div>
+        </div>
+      </div>
+      <div class="sc-arrow">↓</div>
+      <div class="sc-row">
+        <div class="sc-num">2</div>
+        <div class="sc-body">
+          <div class="sc-title">discovery-server (Eureka) — port 8761</div>
+          <div class="sc-desc">Registry-ul de servicii. user-service și api-gateway se <strong>înregistrează</strong> în Eureka la pornire. Dacă Eureka nu e up, ele reîncearcă periodic, dar e curat să fie gata înainte.</div>
+        </div>
+      </div>
+      <div class="sc-arrow">↓</div>
+      <div class="sc-row">
+        <div class="sc-num">3</div>
+        <div class="sc-body">
+          <div class="sc-title">user-service — port 8081</div>
+          <div class="sc-desc">Cere configurație din Config Server ✓ și se înregistrează în Eureka ✓. Trebuie să fie <strong>înregistrat în Eureka</strong> înainte ca api-gateway să îl poată descoperi și ruta trafic spre el.</div>
+        </div>
+      </div>
+      <div class="sc-arrow">↓</div>
+      <div class="sc-row">
+        <div class="sc-num">4</div>
+        <div class="sc-body">
+          <div class="sc-title">api-gateway — port 8080</div>
+          <div class="sc-desc">Rutează la <code>lb://user-service</code> rezolvat prin Eureka. Dacă pornește înainte ca user-service să fie înregistrat, prima cerere poate returna 503. Pornind ultimul, are instanța disponibilă imediat.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p><strong>Regulă simplă:</strong> Config → Registry → Servicii → Gateway. Fiecare pas depinde de cel anterior.</p>
+    </div>
+
+    <h2>Ce este API Gateway și de ce e necesar?</h2>
+    <p>Fără gateway, clientul (Angular, Postman) trebuie să știe adresa exactă a fiecărui microserviciu. Cu gateway, există un <strong>singur punct de intrare</strong> pentru toate requesturile.</p>
+
+    <table>
+      <tr><th>Fără Gateway</th><th>Cu Gateway</th></tr>
+      <tr><td><code>localhost:8081/api/users</code> → direct user-service</td><td><code>localhost:8080/api/users</code> → gateway → user-service</td></tr>
+      <tr><td><code>localhost:8082/admissions</code> → direct admissions-service</td><td><code>localhost:8080/admissions</code> → gateway → admissions-service</td></tr>
+      <tr><td><code>localhost:8083/camin</code> → direct dormitory-service</td><td><code>localhost:8080/camin</code> → gateway → dormitory-service</td></tr>
+    </table>
+
+    <h3>Ce face gateway-ul în proiect</h3>
+    <table>
+      <tr><th>Responsabilitate</th><th>Implementare</th></tr>
+      <tr><td><strong>Routing</strong></td><td><code>lb://user-service</code> via Eureka — știe unde e fiecare serviciu</td></tr>
+      <tr><td><strong>Autentificare</strong></td><td><code>JwtGatewayFilter</code> — validează JWT înainte să ajungă la serviciu</td></tr>
+      <tr><td><strong>Rate limiting</strong></td><td><code>RequestRateLimiter</code> — max N requesturi/secundă per user</td></tr>
+      <tr><td><strong>Logging</strong></td><td><code>LoggingFilter</code> — loghează orice request cu timing</td></tr>
+      <tr><td><strong>CORS</strong></td><td>Configurare globală pentru Angular (<code>localhost:4200</code>)</td></tr>
+      <tr><td><strong>Load balancing</strong></td><td>Prefix <code>lb://</code> distribuie traficul între instanțe multiple</td></tr>
+    </table>
+
+    <div class="callout ok">
+      <p><strong>Avantaj cheie:</strong> Fără gateway, fiecare microserviciu ar trebui să implementeze JWT validation, CORS, rate limiting individual — cod duplicat în fiecare serviciu. Cu gateway, aceste responsabilități transversale sunt centralizate într-un singur loc.</p>
+    </div>
+
+    <h2>LoggingFilter – request/response logging în api-gateway</h2>
+    <p>Un <code>GlobalFilter</code> care interceptează <strong>orice request</strong> care trece prin gateway și loghează: metoda HTTP, path, cod de răspuns și durata în ms.</p>
+
+    <pre><code><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="type">LoggingFilter</span> <span class="keyword">implements</span> GlobalFilter, Ordered {
+
+    <span class="keyword">private static final</span> Logger log = LoggerFactory.getLogger(<span class="type">LoggingFilter</span>.class);
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> Mono&lt;Void&gt; filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        <span class="keyword">long</span> start = System.currentTimeMillis();
+        String method = exchange.getRequest().getMethod().name();
+        String path   = exchange.getRequest().getPath().value();
+
+        <span class="keyword">return</span> chain.filter(exchange).then(Mono.fromRunnable(() -&gt; {
+            <span class="keyword">long</span> elapsed = System.currentTimeMillis() - start;
+            <span class="keyword">int</span> status = exchange.getResponse().getStatusCode().value();
+            log.info(<span class="string">"{} {} → {} ({}ms)"</span>, method, path, status, elapsed);
+        }));
+    }
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public int</span> getOrder() { <span class="keyword">return</span> -1; } <span class="comment">// -1 = rulează primul, înainte de orice alt filter</span>
+}</code></pre>
+
+    <p>Output în consola api-gateway:</p>
+    <pre><code><span class="comment">POST /auth/login → 200 (23ms)
+GET  /api/announcements → 200 (12ms)
+GET  /api/users → 403 (5ms)</span></code></pre>
+
+    <div class="callout ok">
+      <p><strong>De ce GlobalFilter și nu un simplu @Aspect?</strong> api-gateway e bazat pe <strong>Spring WebFlux</strong> (reactiv, non-blocking). Nu are servlet-uri clasice, deci Spring MVC interceptors nu funcționează. <code>GlobalFilter</code> este echivalentul reactiv al unui servlet filter.</p>
+    </div>
+
+    <h2>⚠️ Ordinea rutelor în application.yml — regulă critică</h2>
+    <p>Spring Cloud Gateway evaluează rutele <strong>în ordinea în care sunt definite în YAML</strong> și o folosește pe prima care se potrivește. O greșeală frecventă: dacă ruta cu <code>JwtGatewayFilter</code> include <code>/auth/**</code>, atunci <code>/auth/login</code> (care nu ar trebui să necesite JWT) este blocat cu <strong>401 Unauthorized</strong>.</p>
+
+    <pre><code><span class="comment"># ❌ GREȘIT — user-service-public nu va fi atins niciodată pentru /auth/login</span>
+<span class="string">routes</span>:
+  - <span class="string">id</span>: user-service           <span class="comment"># potrivire /auth/** → JwtFilter → 401 la login!</span>
+    <span class="string">predicates</span>:
+      - Path=/auth/**, /api/**
+    <span class="string">filters</span>:
+      - <span class="string">name</span>: JwtGatewayFilter
+  - <span class="string">id</span>: user-service-public    <span class="comment"># nu ajunge aici niciodată</span>
+    <span class="string">predicates</span>:
+      - Path=/auth/login, /auth/register
+
+<span class="comment"># ✅ CORECT — ruta publică vine PRIMA, fără JWT</span>
+<span class="string">routes</span>:
+  - <span class="string">id</span>: user-service-public    <span class="comment"># PRIMA — prinde /auth/login, /register, /refresh</span>
+    <span class="string">predicates</span>:
+      - Path=/auth/login, /auth/register, /auth/refresh
+  - <span class="string">id</span>: user-service           <span class="comment"># A DOUA — prinde /auth/logout și /api/** cu JWT</span>
+    <span class="string">predicates</span>:
+      - Path=/auth/logout, /api/**
+    <span class="string">filters</span>:
+      - <span class="string">name</span>: JwtGatewayFilter</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Regulă:</strong> Rutele publice (fără autentificare) merg ÎNTOTDEAUNA înaintea rutelor protejate în <code>application.yml</code>. Gateway-ul nu are o logică de „cel mai specific câștigă" — câștigă primul care se potrivește.</p>
+    </div>
+
+    <h2>Rate Limiting cu Redis – protecție împotriva DoS</h2>
+    <p>Limitează câte requesturi poate face un client pe secundă. Configurat în <code>application.yml</code> al api-gateway, folosind Redis pentru a stoca contoarele.</p>
+
+    <h3>1. Dependință în pom.xml (api-gateway)</h3>
+    <pre><code><span class="comment">&lt;!-- Redis reactive — necesar pentru RequestRateLimiter din Gateway --&gt;</span>
+&lt;<span class="keyword">dependency</span>&gt;
+    &lt;<span class="keyword">groupId</span>&gt;org.springframework.boot&lt;/<span class="keyword">groupId</span>&gt;
+    &lt;<span class="keyword">artifactId</span>&gt;spring-boot-starter-data-redis-reactive&lt;/<span class="keyword">artifactId</span>&gt;
+&lt;/<span class="keyword">dependency</span>&gt;</code></pre>
+
+    <div class="callout warn">
+      <p><strong>De ce -reactive?</strong> api-gateway rulează pe WebFlux (reactiv). <code>spring-boot-starter-data-redis</code> standard funcționează cu Servlet/blocking. Versiunea <code>-reactive</code> oferă un client Redis non-blocking compatibil cu WebFlux.</p>
+    </div>
+
+    <h3>2. KeyResolver – pe ce se bazează limita</h3>
+    <pre><code><span class="annotation">@Configuration</span>
+<span class="keyword">public class</span> <span class="type">KeyResolverConfig</span> {
+
+    <span class="annotation">@Bean</span>
+    <span class="keyword">public</span> <span class="type">KeyResolver</span> userKeyResolver() {
+        <span class="keyword">return</span> exchange -&gt; Mono.justOrEmpty(
+            exchange.getRequest().getHeaders().getFirst(<span class="string">"X-User-Id"</span>)
+        ).defaultIfEmpty(<span class="string">"anonymous"</span>);
+        <span class="comment">// limita e per userId sau "anonymous" dacă nu e autentificat</span>
+    }
+}</code></pre>
+
+    <h3>3. Configurare în application.yml</h3>
+    <pre><code><span class="string">spring</span>:
+  <span class="string">data</span>:
+    <span class="string">redis</span>:
+      <span class="string">host</span>: localhost
+      <span class="string">port</span>: 6379
+  <span class="string">cloud</span>:
+    <span class="string">gateway</span>:
+      <span class="string">routes</span>:
+        - <span class="string">id</span>: user-service
+          <span class="string">uri</span>: lb://user-service
+          <span class="string">filters</span>:
+            - <span class="string">name</span>: RequestRateLimiter
+              <span class="string">args</span>:
+                <span class="string">redis-rate-limiter.replenishRate</span>: 20   <span class="comment"># tokeni adăugați/secundă</span>
+                <span class="string">redis-rate-limiter.burstCapacity</span>: 40   <span class="comment"># maxim tokeni simultan</span>
+                <span class="string">key-resolver</span>: <span class="string">"#{@userKeyResolver}"</span></code></pre>
+
+    <table>
+      <tr><th>Parametru</th><th>Ruta /auth/** (publică)</th><th>Ruta /api/** (protejată)</th><th>Efect</th></tr>
+      <tr><td>replenishRate</td><td>10</td><td>5</td><td>Tokeni adăugați per secundă (rata normală)</td></tr>
+      <tr><td>burstCapacity</td><td>20</td><td>10</td><td>Tokeni inițiali în bucket (maxim burst)</td></tr>
+      <tr><td>key-resolver</td><td>@userKeyResolver</td><td>@userKeyResolver</td><td>Limita e per user (header X-User-Id) sau "anonymous"</td></tr>
+    </table>
+
+    <h3>Algoritmul Token Bucket — cum funcționează exact</h3>
+    <p>Rate limiting-ul folosește algoritmul <strong>Token Bucket</strong>, implementat în Redis:</p>
+    <pre><code><span class="comment">Exemplu pentru ruta /api/** (burstCapacity=10, replenishRate=5):</span>
+
+Bucket începe cu 10 tokeni
+Request 1  → consumă 1 token → rămân 9  → 200 OK
+Request 2  → consumă 1 token → rămân 8  → 200 OK
+...
+Request 10 → consumă 1 token → rămân 0  → 200 OK
+Request 11 → bucket gol      → rămân 0  → 429 Too Many Requests
+
+<span class="comment">Dacă aștepți 1 secundă → se adaugă 5 tokeni → poți face 5 requesturi noi</span></code></pre>
+
+    <div class="callout warn">
+      <p><strong>Valorile pentru demo vs producție:</strong> Postman Runner trimite requesturi secvențial (~200ms/request). Cu <code>replenishRate: 5</code>, în 3 secunde pentru 15 requesturi se refac 15 tokeni — bucket-ul nu se golește niciodată. Soluție: <code>replenishRate: 1, burstCapacity: 5</code> — cu 1 token/secundă refill și request-uri la 200ms, bucket-ul se epuizează după primele 5. În producție valorile normale ar fi <code>replenishRate: 20, burstCapacity: 40</code>.</p>
+    </div>
+
+    <p>Când limita e depășită, gateway-ul returnează automat <strong>429 Too Many Requests</strong> fără să ajungă la user-service. Headers utile în response:</p>
+    <pre><code>X-RateLimit-Remaining: 0
+X-RateLimit-Burst-Capacity: 10
+X-RateLimit-Replenish-Rate: 5
+X-RateLimit-Requested-Tokens: 1</code></pre>
+
+    <h2>@Aspect AOP – logging automat în user-service</h2>
+    <p>AOP (Aspect-Oriented Programming) permite adăugarea de comportament transversal (logging, timing, security) <strong>fără a modifica codul existent</strong>. Un singur aspect interceptează automat toate metodele din package-ul <code>service</code>.</p>
+
+    <div class="flow">
+      <div class="step">Controller apelează AnnouncementService.getAll()</div>
+      <span class="arrow">→</span>
+      <div class="step">@Around interceptează înainte de execuție</div>
+      <span class="arrow">→</span>
+      <div class="step">log "→ START AnnouncementService.getAll(..)"</div>
+      <span class="arrow">→</span>
+      <div class="step">pjp.proceed() — execuție reală</div>
+      <span class="arrow">→</span>
+      <div class="step">log "← END ... in 12ms"</div>
+    </div>
+
+    <pre><code><span class="annotation">@Aspect</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="type">ServiceLoggingAspect</span> {
+
+    <span class="keyword">private static final</span> Logger log = LoggerFactory.getLogger(<span class="type">ServiceLoggingAspect</span>.class);
+
+    <span class="comment">// Pointcut: interceptează TOATE metodele publice din package-ul service</span>
+    <span class="annotation">@Pointcut</span>(<span class="string">"execution(* com.campus.userservice.service.*.*(..))"</span>)
+    <span class="keyword">public void</span> serviceMethods() {}
+
+    <span class="annotation">@Around</span>(<span class="string">"serviceMethods()"</span>)
+    <span class="keyword">public</span> Object logExecution(ProceedingJoinPoint pjp) <span class="keyword">throws</span> Throwable {
+        String sig = pjp.getSignature().toShortString();
+        <span class="keyword">long</span> start = System.currentTimeMillis();
+        log.info(<span class="string">"→ START {}"</span>, sig);
+        <span class="keyword">try</span> {
+            Object result = pjp.proceed(); <span class="comment">// execuția metodei reale</span>
+            log.info(<span class="string">"← END {} in {}ms"</span>, sig, System.currentTimeMillis() - start);
+            <span class="keyword">return</span> result;
+        } <span class="keyword">catch</span> (Exception e) {
+            log.error(<span class="string">"✗ FAIL {} after {}ms: {}"</span>, sig, System.currentTimeMillis() - start, e.getMessage());
+            <span class="keyword">throw</span> e;
+        }
+    }
+}</code></pre>
+
+    <table>
+      <tr><th>Adnotare</th><th>Rol</th></tr>
+      <tr><td><code>@Aspect</code></td><td>Marchează clasa ca aspect AOP</td></tr>
+      <tr><td><code>@Component</code></td><td>Spring îl creează ca bean</td></tr>
+      <tr><td><code>@Pointcut</code></td><td>Definește <em>unde</em> se aplică aspectul (expresie SpEL)</td></tr>
+      <tr><td><code>@Around</code></td><td>Rulează <em>în jurul</em> metodei — poate executa cod înainte și după</td></tr>
+      <tr><td><code>pjp.proceed()</code></td><td>Execută metoda originală și returnează rezultatul</td></tr>
+    </table>
+
+    <div class="callout ok">
+      <p><strong>Avantaj față de @Slf4j manual:</strong> Fără aspect, trebuie să adaugi <code>log.info()</code> în fiecare metodă din fiecare serviciu. Cu aspectul, zero modificări în servicii — orice metodă nouă adăugată în <code>service.*</code> este loggată automat.</p>
+    </div>
+
+    <h3>Dependință necesară în pom.xml</h3>
+    <pre><code>&lt;<span class="keyword">dependency</span>&gt;
+    &lt;<span class="keyword">groupId</span>&gt;org.springframework.boot&lt;/<span class="keyword">groupId</span>&gt;
+    &lt;<span class="keyword">artifactId</span>&gt;spring-boot-starter-aop&lt;/<span class="keyword">artifactId</span>&gt;
+&lt;/<span class="keyword">dependency</span>&gt;</code></pre>
+
+    <h2>Circuit Breaker #2 – discovery-server</h2>
+    <p>Primul Circuit Breaker (ziua 7) protejează apelurile spre <code>admissions-service</code>. Al doilea protejează apelul spre <code>discovery-server (Eureka)</code>.</p>
+
+    <pre><code><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="type">HealthCheckService</span> {
+
+    <span class="keyword">private final</span> <span class="type">RestTemplate</span> restTemplate = <span class="keyword">new</span> <span class="type">RestTemplate</span>();
+
+    <span class="annotation">@CircuitBreaker</span>(name = <span class="string">"discovery-server"</span>, fallbackMethod = <span class="string">"discoveryFallback"</span>)
+    <span class="keyword">public</span> String checkDiscovery() {
+        <span class="keyword">return</span> restTemplate.getForObject(
+            <span class="string">"http://localhost:8761/actuator/health"</span>, String.class);
+    }
+
+    <span class="comment">// apelat automat de Resilience4j când CB e OPEN</span>
+    <span class="keyword">public</span> String discoveryFallback(Exception e) {
+        log.warn(<span class="string">"Discovery server unavailable: {}"</span>, e.getMessage());
+        <span class="keyword">return</span> <span class="string">"{\"status\": \"Discovery unavailable\"}"</span>;
+    }
+}</code></pre>
+
+    <h3>Configurare în application.yml</h3>
+    <pre><code><span class="string">resilience4j</span>:
+  <span class="string">circuitbreaker</span>:
+    <span class="string">instances</span>:
+      <span class="string">admissions-service</span>:     <span class="comment"># CB #1 — din ziua 7</span>
+        <span class="string">slidingWindowSize</span>: 5
+        <span class="string">failureRateThreshold</span>: 50
+        <span class="string">waitDurationInOpenState</span>: 10s
+      <span class="string">discovery-server</span>:       <span class="comment"># CB #2 — adăugat azi</span>
+        <span class="string">slidingWindowSize</span>: 3
+        <span class="string">failureRateThreshold</span>: 50
+        <span class="string">waitDurationInOpenState</span>: 5s</code></pre>
+
+    <h3>Stările Circuit Breaker</h3>
+    <table>
+      <tr><th>Stare</th><th>Comportament</th><th>Tranziție</th></tr>
+      <tr>
+        <td><span class="cb-state cb-closed">CLOSED</span></td>
+        <td>Normal — requesturile trec, erorile sunt numărate</td>
+        <td>→ OPEN când failureRate ≥ 50% în ultimele 3 apeluri</td>
+      </tr>
+      <tr>
+        <td><span class="cb-state cb-open">OPEN</span></td>
+        <td>Blocat — toate apelurile returnează fallback imediat</td>
+        <td>→ HALF_OPEN după 5 secunde</td>
+      </tr>
+      <tr>
+        <td><span class="cb-state cb-half">HALF_OPEN</span></td>
+        <td>Testare — lasă 1 apel să treacă, verifică dacă serviciul e ok</td>
+        <td>→ CLOSED dacă reușește, → OPEN dacă eșuează</td>
+      </tr>
+    </table>
+
+    <div class="callout">
+      <p><strong>De ce 2 Circuit Breakers separați?</strong> Fiecare serviciu extern are proprii parametri de toleranță. <code>admissions-service</code> are <code>slidingWindowSize: 5</code> (mai tolerant), <code>discovery-server</code> are <code>slidingWindowSize: 3</code> (mai agresiv — Eureka trebuie să fie mereu disponibil).</p>
+    </div>
+
+    <h2>Verificare finală – checklist ziua 12</h2>
+
+    <div class="callout warn">
+      <p><strong>Ordinea de pornire contează:</strong> config-server → discovery-server → user-service → api-gateway. Dacă discovery-server se oprește, gateway-ul returnează <strong>503</strong> pentru orice request (nu găsește instanțe prin <code>lb://user-service</code>). Verifică întotdeauna <code>http://localhost:8761</code> — USER-SERVICE trebuie să apară în lista de instanțe înainte să testezi.</p>
+    </div>
+
+    <table>
+      <tr><th>Test</th><th>Cum verifici</th><th>Rezultat așteptat</th></tr>
+      <tr><td>LoggingFilter</td><td>Orice request la <code>localhost:8080/api/announcements</code></td><td>Consolă gateway: <code>GET /api/announcements -> 200 (12ms)</code></td></tr>
+      <tr><td>Rate limiting</td><td>10+ requesturi rapide la gateway (burstCapacity=5)</td><td>Al 6-lea → <code>429 Too Many Requests</code></td></tr>
+      <tr><td>AOP logging</td><td><code>GET /api/announcements</code> cu token</td><td>Consolă user-service: <code>&gt;&gt; START AnnouncementService.getAll(..)</code></td></tr>
+      <tr><td>CB #2 UP</td><td><code>GET /api/health/discovery</code> cu Eureka pornit</td><td>JSON cu status UP din Eureka</td></tr>
+      <tr><td>CB #2 DOWN</td><td><code>GET /api/health/discovery</code> fără Eureka</td><td><code>{"status": "Discovery unavailable"}</code></td></tr>
+      <tr><td>503 = Eureka oprit</td><td>Orice request prin gateway fără discovery-server</td><td>503 — nu rate limiter, nu cod — Eureka lipsă</td></tr>
+    </table>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce microserviciile se pornesc în ordinea config → discovery → servicii → gateway?</div>
+      <div class="qa-a">Este un lanț de dependențe la startup. <strong>Config Server</strong> trebuie să fie primul — toate serviciile îi cer configurația la pornire. <strong>Eureka</strong> al doilea — serviciile se înregistrează în el la pornire. <strong>user-service</strong> înaintea gateway-ului — gateway-ul rezolvă <code>lb://user-service</code> prin Eureka; dacă user-service nu e înregistrat, gateway-ul nu are unde să ruteze. <strong>Gateway</strong> ultimul — are nevoie de toți ceilalți gata.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce este un @Pointcut și care este sintaxa expresiei pentru service methods?</div>
+      <div class="qa-a"><code>@Pointcut</code> definește <em>unde</em> se aplică aspectul — o expresie care selectează metode. <code>execution(* com.campus.userservice.service.*.*(..))</code> se citește: execuție (<code>execution</code>) a oricărei metode (<code>*</code>) din orice clasă (<code>*</code>) din packetul <code>service</code>, cu orice argumente (<code>(..)</code>). Primul <code>*</code> = orice tip de return, al doilea <code>*</code> = orice clasă, al treilea <code>*</code> = orice metodă.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Diferența dintre @Before, @After și @Around în AOP?</div>
+      <div class="qa-a"><code>@Before</code> — rulează ÎNAINTE de metodă, nu poate opri execuția. <code>@After</code> — rulează DUPĂ metodă (întotdeauna, indiferent de excepții). <code>@AfterReturning</code> — doar dacă metoda returnează normal. <code>@AfterThrowing</code> — doar dacă aruncă excepție. <code>@Around</code> — cel mai puternic: controlează complet execuția, poate modifica parametrii, rezultatul sau chiar să nu apeleze metoda originală (<code>pjp.proceed()</code> este opțional).</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce returnează gateway-ul când rate limit e depășit și cum se configurează?</div>
+      <div class="qa-a">Returnează automat <strong>429 Too Many Requests</strong> cu header <code>X-RateLimit-Remaining: 0</code>. Se configurează în <code>application.yml</code> al gateway-ului sub <code>filters</code> cu <code>name: RequestRateLimiter</code>. <code>replenishRate</code> = tokeni regenerați pe secundă (rata normală). <code>burstCapacity</code> = maxim tokeni acumulați (permite burst-uri). Algoritmul folosit este <strong>Token Bucket</strong> — Redis stochează numărul de tokeni disponibili per key.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce cu burstCapacity=40 și Postman Runner nu se obține 429, chiar dacă se trimit 25 de requesturi?</div>
+      <div class="qa-a">Algoritmul Token Bucket refacе tokeni continuu: cu <code>replenishRate=20</code>, se adaugă 20 tokeni/secundă. Postman Runner secvențial trimite ~1 request la 50ms → 25 requesturi durează ~1.25 secunde → în acest timp se refac 25 tokeni (20×1.25). Net: 25 consumați − 25 refăcuți = bucket nu se golește niciodată. <strong>Soluție pentru demo</strong>: scazi <code>burstCapacity</code> la 10 și <code>replenishRate</code> la 5 — bucket-ul se epuizează la al 11-lea request rapid. În producție valorile mai mari sunt corecte.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum funcționează fallback-ul în @CircuitBreaker și care sunt cerințele metodei fallback?</div>
+      <div class="qa-a">Când CB-ul e în starea OPEN (sau metoda aruncă excepție), Resilience4j apelează automat metoda specificată în <code>fallbackMethod</code>. Cerințe: aceeași semnătură ca metoda principală + un parametru extra de tip <code>Exception</code> (sau <code>Throwable</code>). Exemplu: metoda principală returnează <code>String</code> → fallback returnează tot <code>String</code> și primește <code>Exception e</code>. Dacă semnătura nu corespunde, Resilience4j aruncă <code>NoFallbackAvailableException</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce api-gateway folosește spring-boot-starter-data-redis-reactive și nu varianta standard?</div>
+      <div class="qa-a">api-gateway este construit pe <strong>Spring WebFlux</strong> (stack reactiv, non-blocking, bazat pe Netty). <code>spring-boot-starter-data-redis</code> standard folosește <strong>Lettuce</strong> sau <strong>Jedis</strong> în mod blocking — incompatibil cu un event loop reactiv (blochează thread-ul). Varianta <code>-reactive</code> oferă <code>ReactiveRedisTemplate</code> cu operații asincrone (<code>Mono/Flux</code>) care nu blochează event loop-ul gateway-ului.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce avantaj are @Aspect față de logarea manuală cu @Slf4j în fiecare serviciu?</div>
+      <div class="qa-a"><strong>@Slf4j manual</strong>: trebuie adăugat <code>log.info()</code> explicit în fiecare metodă — cod repetitiv, ușor de uitat, și dacă adaugi un serviciu nou trebuie să adaugi manual logarea. <strong>@Aspect</strong>: zero modificări în servicii — orice metodă nouă din <code>service.*</code> este loggată automat. Avantaj suplimentar: poți schimba comportamentul de logging (format, nivel, destinație) dintr-un singur loc fără să atingi serviciile. Dezavantaj: @Aspect nu funcționează pe metode private sau metode apelate intern în aceeași clasă (self-invocation problem).</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — AOP, Gateway și Circuit Breaker</h2>
+
+<div class="callout" style="background:#130f2d;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> user-service rulând (Tutorial 00-09). Discovery Server Eureka pornit pe 8761.</p>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 1 — Adaugă @Aspect pentru logging automat în user-service</strong>
+  <div style="margin-top:12px">
+    <p>Adaugă dependința AOP în <code>user-service/pom.xml</code>:</p>
+    <pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-aop&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+    <p>Creează <code>config/LoggingAspect.java</code>:</p>
+    <pre><code>@Aspect
+@Component
+@Slf4j
+public class LoggingAspect {
+
+    // Pointcut: interceptează ORICE metodă publică din pachetul service
+    @Pointcut("execution(* com.campus.userservice.service.*.*(..))")
+    public void serviceMethods() {}
+
+    @Around("serviceMethods()")
+    public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
+        String methodName = joinPoint.getSignature().toShortString();
+        long start = System.currentTimeMillis();
+
+        try {
+            Object result = joinPoint.proceed();   // execută metoda originală
+            long duration = System.currentTimeMillis() - start;
+            log.info("[AOP] {} completed in {}ms", methodName, duration);
+            return result;
+        } catch (Exception e) {
+            log.error("[AOP] {} threw: {}", methodName, e.getMessage());
+            throw e;
+        }
+    }
+}</code></pre>
+    <p>Acum <strong>toate</strong> metodele din <code>service.*</code> sunt logate automat — fără nicio modificare în servicii.</p>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 2 — Creează modulul api-gateway</strong>
+  <div style="margin-top:12px">
+    <p>Generează proiect nou la start.spring.io: <strong>Gateway</strong> + <strong>Eureka Discovery Client</strong> + <strong>Spring Cloud Circuit Breaker</strong>. Port: <code>8080</code>.</p>
+    <p>Configurează <code>api-gateway/src/main/resources/application.yml</code>:</p>
+    <pre><code>server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        # Rutele publice FĂRĂ autentificare (trebuie ÎNAINTE de ruta protejată)
+        - id: user-service-public
+          uri: lb://user-service     # lb:// = load balanced prin Eureka
+          predicates:
+            - Path=/auth/login, /auth/register, /auth/refresh, /auth/csrf
+
+        # Rutele protejate CU filtru JWT
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**, /api/profile/**
+          filters:
+            - name: JwtGatewayFilter   # filtru custom de validare JWT
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 3 — Adaugă Circuit Breaker</strong>
+  <div style="margin-top:12px">
+    <p>Circuit Breaker protejează Gateway-ul când un serviciu downstream este indisponibil:</p>
+    <pre><code># În application.yml al gateway:
+- id: admissions-service
+  uri: lb://admissions-service
+  predicates:
+    - Path=/admissions/**
+  filters:
+    - name: CircuitBreaker
+      args:
+        name: admissionsCircuitBreaker
+        fallbackUri: forward:/fallback/admissions
+        # Dacă admissions-service nu răspunde → redirecționează la /fallback/admissions</code></pre>
+    <p>Creează controller-ul de fallback în gateway:</p>
+    <pre><code>@RestController
+public class FallbackController {
+
+    @GetMapping("/fallback/admissions")
+    public ResponseEntity&lt;Map&lt;String, String&gt;&gt; admissionsFallback() {
+        return ResponseEntity.status(503).body(
+            Map.of("message", "Serviciul de admitere este temporar indisponibil")
+        );
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Ordinea de pornire obligatorie:</strong></p>
+  <pre><code>1. docker compose up -d          # infrastructura
+2. Pornește config-server         # port 8888
+3. Pornește discovery-server      # port 8761
+4. Pornești user-service          # port 8081
+5. Pornești api-gateway           # port 8080 (ultimul!)</code></pre>
+  <p><strong>Verificare AOP:</strong> Apelează orice endpoint → în log-urile user-service trebuie să apară: <code>[AOP] UserService.findFiltered(..) completed in 23ms</code></p>
+  <p><strong>Verificare Gateway:</strong> <code>GET http://localhost:8080/api/users</code> (prin gateway, nu direct pe 8081) → același rezultat.</p>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial AOP + API Gateway + Circuit Breaker &nbsp;|&nbsp; <a href="index.html" style="color:#818cf8">Toate tutorialele</a></footer>
+</body>
+</html>

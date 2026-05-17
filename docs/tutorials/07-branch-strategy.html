@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Branch Strategy – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#14532d,#15803d);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#bbf7d0;margin-top:8px;font-size:1.05rem}
+    .container{max-width:900px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#4ade80;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#86efac;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .git-cmd{color:#4ade80}
+    .git-arg{color:#fbbf24}
+    .git-comment{color:#475569;font-style:italic}
+    .callout{background:#1e293b;border-left:4px solid #4ade80;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b}
+    .callout.danger{border-color:#ef4444}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .branch-diagram{margin:24px 0;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:24px;overflow-x:auto}
+    .timeline{display:flex;align-items:flex-start;gap:0;position:relative}
+    .branch{display:flex;align-items:center;gap:8px;margin:12px 0}
+    .branch-name{font-size:.8rem;font-family:monospace;width:60px;text-align:right;flex-shrink:0}
+    .branch-name.main{color:#4ade80}
+    .branch-name.dev{color:#60a5fa}
+    .commit{width:14px;height:14px;border-radius:50%;border:2px solid;flex-shrink:0;position:relative}
+    .commit.main{background:#4ade80;border-color:#4ade80}
+    .commit.dev{background:#60a5fa;border-color:#60a5fa}
+    .commit.merge{background:#fbbf24;border-color:#fbbf24}
+    .line-h{height:2px;flex-grow:1}
+    .line-h.main{background:#4ade80}
+    .line-h.dev{background:#60a5fa}
+    .commit-label{font-size:.72rem;color:#94a3b8;white-space:nowrap}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#4ade80;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#4ade80;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #15803d;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>🌿 Branch Strategy</h1>
+    <p>Strategia dev/main – dezvoltare pe dev, release pe main</p>
+  </header>
+
+  <div class="container">
+
+    <h2>De ce branch-uri separate?</h2>
+    <p>Fără o strategie clară, echipa lucrează direct pe <code>main</code> și riscă să introducă cod neterminat sau buguri în versiunea "stabilă". Separarea <code>dev</code> / <code>main</code> protejează producția.</p>
+
+    <div class="callout">
+      <p><strong>Regulă în proiect:</strong><br/>
+      <strong>dev</strong> → unde se dezvoltă zilnic, cod work-in-progress<br/>
+      <strong>main</strong> → cod stabil, merge-uri la finalul unui milestone</p>
+    </div>
+
+    <h2>Vizualizarea fluxului</h2>
+    <div class="branch-diagram">
+      <div class="branch">
+        <span class="branch-name main">main</span>
+        <div class="commit main" title="Initial commit"></div>
+        <div class="line-h main" style="width:60px"></div>
+        <div class="commit main"></div>
+        <div class="line-h main" style="width:120px"></div>
+        <div class="commit merge" title="Merge din dev la release"></div>
+        <div class="line-h main" style="width:60px"></div>
+        <div class="commit main"></div>
+        &nbsp;<span class="commit-label">← merge la release</span>
+      </div>
+      <div class="branch">
+        <span class="branch-name dev">dev</span>
+        <div style="width:80px"></div>
+        <div class="commit dev" title="ziua 1"></div>
+        <div class="line-h dev" style="width:30px"></div>
+        <div class="commit dev" title="ziua 2"></div>
+        <div class="line-h dev" style="width:30px"></div>
+        <div class="commit dev" title="ziua 3"></div>
+        <div class="line-h dev" style="width:30px"></div>
+        <div class="commit dev" title="ziua 4"></div>
+        <div class="line-h dev" style="width:20px"></div>
+        <div class="commit dev"></div>
+        &nbsp;<span class="commit-label">← commit-uri zilnice</span>
+      </div>
+    </div>
+
+    <h2>Setup inițial – crearea branch-ului dev</h2>
+    <pre><code><span class="git-comment"># Creează branch-ul dev pornind din main</span>
+<span class="git-cmd">git</span> <span class="git-arg">checkout -b dev</span>
+
+<span class="git-comment"># Publică branch-ul pe GitHub (prima dată)</span>
+<span class="git-cmd">git</span> <span class="git-arg">push -u origin dev</span>
+
+<span class="git-comment"># Verifică că ești pe dev</span>
+<span class="git-cmd">git</span> <span class="git-arg">branch</span>
+<span class="git-comment">  * dev     ← asteriscul = branch-ul curent</span>
+<span class="git-comment">    main</span></code></pre>
+
+    <h2>Workflow zilnic pe dev</h2>
+    <pre><code><span class="git-comment"># 1. Asigură-te că ești pe dev</span>
+<span class="git-cmd">git</span> <span class="git-arg">checkout dev</span>
+
+<span class="git-comment"># 2. Adu ultimele modificări din GitHub</span>
+<span class="git-cmd">git</span> <span class="git-arg">pull origin dev</span>
+
+<span class="git-comment"># 3. Faci modificările tale, testezi</span>
+<span class="git-comment"># ... cod, teste ...</span>
+
+<span class="git-comment"># 4. Adaugi fișierele modificate</span>
+<span class="git-cmd">git</span> <span class="git-arg">add src/main/java/com/campus/...</span>
+
+<span class="git-comment"># 5. Commit cu mesaj descriptiv</span>
+<span class="git-cmd">git</span> <span class="git-arg">commit -m "feat: day 9 — specific exceptions, @OneToMany#2, Pageable#3, rememberMe"</span>
+
+<span class="git-comment"># 6. Push pe GitHub</span>
+<span class="git-cmd">git</span> <span class="git-arg">push origin dev</span></code></pre>
+
+    <h2>Merge dev → main la release</h2>
+    <pre><code><span class="git-comment"># 1. Switch pe main</span>
+<span class="git-cmd">git</span> <span class="git-arg">checkout main</span>
+
+<span class="git-comment"># 2. Aduce ultimele modificări din main</span>
+<span class="git-cmd">git</span> <span class="git-arg">pull origin main</span>
+
+<span class="git-comment"># 3. Merge din dev (--no-ff păstrează istoricul clar)</span>
+<span class="git-cmd">git</span> <span class="git-arg">merge dev --no-ff -m "release: merge dev → main after Day 10"</span>
+
+<span class="git-comment"># 4. Push main pe GitHub</span>
+<span class="git-cmd">git</span> <span class="git-arg">push origin main</span>
+
+<span class="git-comment"># 5. Revino pe dev pentru a continua lucrul</span>
+<span class="git-cmd">git</span> <span class="git-arg">checkout dev</span></code></pre>
+
+    <h2>Convenții pentru mesajele de commit</h2>
+    <table>
+      <tr><th>Prefix</th><th>Când se folosește</th><th>Exemplu</th></tr>
+      <tr><td><code>feat:</code></td><td>Funcționalitate nouă</td><td>feat: add remember me to login</td></tr>
+      <tr><td><code>fix:</code></td><td>Corectare bug</td><td>fix: FK constraint in test setUp</td></tr>
+      <tr><td><code>refactor:</code></td><td>Restructurare cod fără funcționalitate nouă</td><td>refactor: extract tag resolution</td></tr>
+      <tr><td><code>test:</code></td><td>Adăugare sau modificare teste</td><td>test: add UserService unit tests</td></tr>
+      <tr><td><code>chore:</code></td><td>Configurare, build, dependințe</td><td>chore: add docker-compose.yml</td></tr>
+      <tr><td><code>docs:</code></td><td>Documentație</td><td>docs: add API documentation</td></tr>
+      <tr><td><code>release:</code></td><td>Merge la release</td><td>release: merge dev → main after Day 10</td></tr>
+    </table>
+
+    <h2>Comenzi utile</h2>
+    <pre><code><span class="git-comment"># Vezi istoricul grafic al branch-urilor</span>
+<span class="git-cmd">git</span> <span class="git-arg">log --oneline --graph --all</span>
+
+<span class="git-comment"># Verifică pe ce branch ești</span>
+<span class="git-cmd">git</span> <span class="git-arg">branch</span>
+
+<span class="git-comment"># Verifică statusul fișierelor</span>
+<span class="git-cmd">git</span> <span class="git-arg">status</span>
+
+<span class="git-comment"># Anulează ultimul commit (păstrează modificările)</span>
+<span class="git-cmd">git</span> <span class="git-arg">reset --soft HEAD~1</span>
+
+<span class="git-comment"># Destagingizează toate fișierele</span>
+<span class="git-cmd">git</span> <span class="git-arg">restore --staged .</span></code></pre>
+
+    <div class="callout warn">
+      <p><strong>GitHub Desktop:</strong> Dacă după <code>git reset --soft HEAD~1</code> nu vezi modificările în GitHub Desktop, rulează și <code>git restore --staged .</code> pentru a le destaging-ui. Vor apărea ca modificări nesalvate.</p>
+    </div>
+
+    <div class="callout danger">
+      <p><strong>Credentials Windows:</strong> Dacă push-ul eșuează cu "Permission denied", mergi la <strong>Control Panel → Credential Manager → Windows Credentials</strong> și actualizează intrarea <code>git:https://github.com</code> cu username-ul corect (CatalinP95 în loc de CatalinP14).</p>
+    </div>
+
+    <h2>De ce --no-ff la merge?</h2>
+    <p>Fără <code>--no-ff</code>, Git face un "fast-forward" merge și istoricul arată ca și cum toate commit-urile au fost făcute direct pe main. Cu <code>--no-ff</code>, se creează un commit de merge explicit și e clar că a existat un branch separat.</p>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Care este rolul branch-ului dev față de main în strategia noastră?</div>
+      <div class="qa-a"><strong>dev</strong> = branch-ul de lucru zilnic, conține cod work-in-progress, poate fi instabil. Toți commit-urile zilnice merg pe dev. <strong>main</strong> = branch-ul stabil, reprezintă versiunea de „release". Merge-ul din dev în main se face doar la finalul unui milestone (ex: după ziua 10), cu comanda <code>git merge dev --no-ff</code>. Nimeni nu commit-uiește direct pe main.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face git merge --no-ff și de ce e preferabil față de fast-forward?</div>
+      <div class="qa-a"><code>--no-ff</code> (no fast-forward) forțează crearea unui commit explicit de merge, chiar dacă Git ar putea face fast-forward. Avantaj: istoricul Git arată clar că a existat un branch separat și când s-a făcut merge-ul. Cu fast-forward, commit-urile din dev apar ca și cum au fost făcute direct pe main — istoricul devine liniar și pierzi contextul „am lucrat pe un branch separat". În proiect: <code>git merge dev --no-ff -m "release: merge dev → main after Day 10"</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce prefixe de commit se folosesc și când?</div>
+      <div class="qa-a"><code>feat:</code> — funcționalitate nouă (ex: feat: add JWT auth). <code>fix:</code> — corectare bug (ex: fix: FK constraint in tests). <code>refactor:</code> — restructurare fără funcționalitate nouă. <code>test:</code> — adăugare/modificare teste. <code>chore:</code> — configurare, build, dependințe (ex: chore: add docker-compose.yml). <code>docs:</code> — documentație. <code>release:</code> — merge la release. Convenția Conventional Commits face istoricul parsabil automat pentru changelog-uri.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Care sunt pașii workflow-ului zilnic pe branch dev?</div>
+      <div class="qa-a">1. <code>git checkout dev</code> — asigură-te că ești pe dev. 2. <code>git pull origin dev</code> — sincronizează cu GitHub (important dacă lucrezi în echipă). 3. Faci modificările și testezi. 4. <code>git add &lt;fișiere-specifice&gt;</code> — staged doar ce e relevant. 5. <code>git commit -m "feat: ..."</code> — commit cu mesaj descriptiv. 6. <code>git push origin dev</code> — publici pe GitHub. Nu folosi <code>git add .</code> pentru a evita commit-uri accidentale de fișiere sensibile.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face git reset --soft HEAD~1 și când e util?</div>
+      <div class="qa-a"><code>git reset --soft HEAD~1</code> „anulează" ultimul commit, dar <strong>păstrează modificările staged</strong> (pot fi recommit-uite). Util când ai scris un mesaj greșit sau ai uitat să incluzi un fișier. Alternativă: <code>git reset --mixed HEAD~1</code> — modificările rămân unstaged. <code>git reset --hard HEAD~1</code> — modificările sunt <strong>pierdute complet</strong> (folosești doar cu mare atenție). Nu folosi niciodată reset pe commit-uri deja push-uite pe branch-uri partajate.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum publici un branch local nou pe GitHub pentru prima dată?</div>
+      <div class="qa-a"><code>git push -u origin dev</code> — flag-ul <code>-u</code> (set-upstream) leagă branch-ul local de cel remote. Ulterior, poți folosi simplu <code>git push</code> și <code>git pull</code> fără a specifica <code>origin dev</code>. Fără <code>-u</code>, Git nu știe la care branch remote să pusheze și îți cere să specifici manual de fiecare dată. <code>git branch -vv</code> afișează ce branch local e legat de ce remote.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum vizualizezi istoricul grafic al branch-urilor în terminal?</div>
+      <div class="qa-a"><code>git log --oneline --graph --all</code> afișează un arbore ASCII al tuturor branch-urilor: <code>* abc123 (HEAD -&gt; dev) feat: add exception handling</code> și merge commit-urile cu linii de conexiune. <code>--oneline</code> = câte o linie per commit, <code>--graph</code> = linii ASCII pentru structura branch-urilor, <code>--all</code> = include și branch-urile remote (origin/main, origin/dev).</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Workflow cu branch-uri</h2>
+
+<div class="callout" style="background:#0a1f0a;border-left:4px solid #4ade80;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Git instalat, cont GitHub creat, repository creat pe GitHub (fără fișiere inițiale).</p>
+</div>
+
+<div style="background:#0a1f0a;border:1px solid #166534;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#4ade80">Pasul 1 — Configurare inițială Git</strong>
+  <div style="margin-top:12px">
+    <pre><code># O singură dată, setează identitatea
+git config --global user.name "Prenume Nume"
+git config --global user.email "email@example.com"
+
+# În folderul proiectului
+git init
+git branch -M main
+git remote add origin https://github.com/username/portal-admitere.git</code></pre>
+  </div>
+</div>
+
+<div style="background:#0a1f0a;border:1px solid #166534;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#4ade80">Pasul 2 — Primul commit și creare branch dev</strong>
+  <div style="margin-top:12px">
+    <pre><code>git add .
+git commit -m "feat: initial project structure"
+git push -u origin main
+
+# Creează branch-ul de dezvoltare
+git checkout -b dev
+git push -u origin dev</code></pre>
+  </div>
+</div>
+
+<div style="background:#0a1f0a;border:1px solid #166534;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#4ade80">Pasul 3 — Workflow zilnic pe dev</strong>
+  <div style="margin-top:12px">
+    <pre><code># Asigură-te că ești pe dev și actualizat
+git checkout dev
+git pull origin dev
+
+# ... implementezi funcționalitatea ...
+
+# Adaugă fișierele modificate (specific, nu git add .)
+git add src/main/java/com/campus/userservice/api/UserController.java
+git commit -m "feat: add user CRUD endpoints"
+git push origin dev</code></pre>
+    <p>Convenții pentru mesajele de commit: <code>feat:</code> funcționalitate nouă, <code>fix:</code> corecție bug, <code>refactor:</code> restructurare fără funcționalitate nouă, <code>test:</code> teste, <code>docs:</code> documentație.</p>
+  </div>
+</div>
+
+<div style="background:#0a1f0a;border:1px solid #166534;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#4ade80">Pasul 4 — Merge în main pentru release</strong>
+  <div style="margin-top:12px">
+    <pre><code>git checkout main
+git pull origin main
+git merge --no-ff dev -m "merge: integrate user service v1"
+git push origin main</code></pre>
+    <p><code>--no-ff</code> forțează crearea unui merge commit vizibil în istoric. Fără el, Git aplatizează istoricul și nu se mai vede că modificările au venit din branch-ul <code>dev</code>.</p>
+  </div>
+</div>
+
+<div style="background:#0a1f0a;border:1px solid #166534;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#4ade80">Pasul 5 — Recuperare din greșeli comune</strong>
+  <div style="margin-top:12px">
+    <pre><code># Anulează ultimul commit dar păstrează fișierele modificate
+git reset --soft HEAD~1
+
+# Revino la starea unui fișier din ultimul commit
+git restore src/main/java/.../UserController.java
+
+# Vizualizează istoricul grafic complet
+git log --oneline --graph --all</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Pe GitHub trebuie să apară ambele branch-uri. Rulează local:</p>
+  <pre><code>git log --oneline --graph --all
+# Așteptat:
+# *   a1b2c3 (HEAD -> main) merge: integrate user service v1
+# |\
+# | * d4e5f6 (dev) feat: add user CRUD endpoints
+# |/
+# * g7h8i9 feat: initial project structure</code></pre>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial Branch Strategy &nbsp;|&nbsp; <a href="index.html" style="color:#4ade80">Toate tutorialele</a></footer>
+</body>
+</html>

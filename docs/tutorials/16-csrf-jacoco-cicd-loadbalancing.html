@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CSRF, JaCoCo, CI/CD, Load Balancing – Tutorial Ziua 16</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout.err{border-color:#ef4444}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #4f46e5}
+    .step.gray{background:#1e293b;color:#94a3b8;border-color:#334155}
+    .arrow{color:#818cf8;font-size:1.4rem}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+    .checklist{list-style:none;margin:16px 0}
+    .checklist li{padding:8px 0;color:#cbd5e1;border-bottom:1px solid #1e293b;font-size:.92rem}
+    .checklist li::before{content:'✓ ';color:#10b981;font-weight:700}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>CSRF, JaCoCo 81%, CI/CD, Load Balancing & Grafana</h1>
+    <p>Securitate, acoperire cod, automatizare și monitorizare în microservicii Spring Boot + Angular 21</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ce s-a construit în Ziua 16</h2>
+    <p>Ziua 16 completează aspectele de securitate, testare și infrastructură ale proiectului. Toate componentele funcționează împreună pentru a demonstra un sistem de producție complet.</p>
+
+    <ul class="checklist">
+      <li>CSRF Protection — cookie <code>XSRF-TOKEN</code> + header <code>X-XSRF-TOKEN</code> în Angular</li>
+      <li>JaCoCo Coverage — 90 teste, acoperire cod de la 70% la 81%</li>
+      <li>Load Balancing demonstrabil — header <code>X-Instance-Port</code>, 2 instanțe Eureka</li>
+      <li>Grafana auto-provisioning — datasource Prometheus + dashboard JSON la pornire</li>
+      <li>Config Server verificat — JWT secret externalizat, <code>@RefreshScope</code></li>
+      <li>CI/CD GitHub Actions — build + teste automate la fiecare push</li>
+      <li>Remember Me — <code>localStorage</code> vs <code>sessionStorage</code> bazat pe checkbox</li>
+      <li>Pagina Coverage integrată în Angular — iframe cu design consistent, fără tab nou</li>
+    </ul>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>1. CSRF — Cross-Site Request Forgery Protection</h2>
+
+    <h3>De ce e necesar</h3>
+    <p>Fără CSRF, un site malițios poate determina browserul utilizatorului autentificat să facă cereri neautorizate (POST/PUT/DELETE) către aplicația noastră. Chiar dacă folosim JWT, browserul trimite automat cookie-urile — de aceea avem nevoie de un token suplimentar pe care atacatorul nu îl poate citi.</p>
+
+    <div class="callout warn">
+      <p><strong>Notă arhitecturală:</strong> CSRF este relevant când tokenul de autentificare e stocat în cookie. Dacă JWT-ul e trimis doar prin header <code>Authorization: Bearer</code>, CSRF nu e necesar. Proiectul nostru demonstrează ambele mecanisme.</p>
+    </div>
+
+    <h3>Flux CSRF complet</h3>
+    <div class="flow">
+      <div class="step">Angular pornește</div>
+      <div class="arrow">→</div>
+      <div class="step">GET /auth/csrf</div>
+      <div class="arrow">→</div>
+      <div class="step">Spring setează cookie XSRF-TOKEN</div>
+      <div class="arrow">→</div>
+      <div class="step">Angular citește cookie</div>
+      <div class="arrow">→</div>
+      <div class="step">POST cu X-XSRF-TOKEN header</div>
+      <div class="arrow">→</div>
+      <div class="step">Spring validează → 200 OK</div>
+    </div>
+
+    <h3>Backend — SecurityConfiguration.java</h3>
+    <pre><code><span class="annotation">@Bean</span>
+<span class="keyword">public</span> <span class="type">SecurityFilterChain</span> securityFilterChain(<span class="type">HttpSecurity</span> http) <span class="keyword">throws</span> <span class="type">Exception</span> {
+    http
+        .csrf(csrf -> csrf
+            .csrfTokenRepository(<span class="type">CookieCsrfTokenRepository</span>.withHttpOnlyFalse())
+            .csrfTokenRequestHandler(<span class="keyword">new</span> <span class="type">CsrfTokenRequestAttributeHandler</span>())
+            .ignoringRequestMatchers(
+                <span class="string">"/auth/login"</span>, <span class="string">"/auth/register"</span>,
+                <span class="string">"/auth/refresh"</span>, <span class="string">"/auth/logout"</span>,
+                <span class="string">"/actuator/**"</span>, <span class="string">"/api/health/**"</span>
+            )
+        )
+        <span class="comment">// ... rest of config</span>
+}</code></pre>
+
+    <p><code>CookieCsrfTokenRepository.withHttpOnlyFalse()</code> — cookieul <code>XSRF-TOKEN</code> nu are <code>HttpOnly</code>, deci Angular JavaScript îl poate citi.</p>
+    <p><code>CsrfTokenRequestAttributeHandler</code> — Spring Security 6, citește tokenul din header sau parametru.</p>
+    <p><code>ignoringRequestMatchers</code> — endpoint-urile de autentificare sunt excluse (nu există token CSRF la primul login).</p>
+
+    <h3>Endpoint inițializare cookie — AuthController.java</h3>
+    <pre><code><span class="annotation">@GetMapping</span>(<span class="string">"/auth/csrf"</span>)
+<span class="keyword">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">Void</span>&gt; csrf(<span class="type">HttpServletRequest</span> request, <span class="type">HttpServletResponse</span> response) {
+    <span class="type">CsrfToken</span> token = (<span class="type">CsrfToken</span>) request.getAttribute(<span class="type">CsrfToken</span>.<span class="keyword">class</span>.getName());
+    <span class="keyword">if</span> (token != <span class="keyword">null</span>) token.getToken(); <span class="comment">// forțează scrierea cookie-ului</span>
+    <span class="keyword">return</span> <span class="type">ResponseEntity</span>.ok().build();
+}</code></pre>
+
+    <p>Spring Security 6 evaluează token-ul <strong>lazy</strong> — cookieul nu se scrie decât dacă cineva apelează explicit <code>getToken()</code>. Endpoint-ul <code>/auth/csrf</code> forțează această inițializare.</p>
+
+    <h3>Frontend — app.config.ts</h3>
+    <pre><code><span class="keyword">export const</span> appConfig: <span class="type">ApplicationConfig</span> = {
+  providers: [
+    provideHttpClient(
+      withInterceptors([jwtInterceptor]),
+      <span class="annotation">withXsrfConfiguration</span>({
+        cookieName: <span class="string">'XSRF-TOKEN'</span>,
+        headerName: <span class="string">'X-XSRF-TOKEN'</span>
+      })
+    ),
+    <span class="annotation">provideAppInitializer</span>(<span class="keyword">async</span> () => {
+      <span class="keyword">const</span> http = inject(<span class="type">HttpClient</span>);
+      <span class="keyword">await</span> firstValueFrom(
+        http.get(<span class="string">`${environment.apiUrl}/auth/csrf`</span>, { withCredentials: <span class="keyword">true</span> })
+      ).catch(() => {});
+    })
+  ]
+};</code></pre>
+
+    <p><code>withXsrfConfiguration</code> — Angular citește automat cookie-ul și trimite valoarea ca header la fiecare POST/PUT/DELETE.</p>
+    <p><code>provideAppInitializer</code> — se execută o singură dată la pornirea aplicației, înainte de orice altă navigare.</p>
+
+    <h3>Fix teste MockMvc</h3>
+    <p>Cu CSRF activat, toate testele de tip POST/PUT/DELETE trebuie să includă <code>.with(csrf())</code>:</p>
+    <pre><code><span class="keyword">import static</span> org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+
+mockMvc.perform(post(<span class="string">"/api/users"</span>).<span class="annotation">with</span>(csrf())
+        .header(<span class="string">"Authorization"</span>, <span class="string">"Bearer "</span> + adminToken)
+        .contentType(<span class="type">MediaType</span>.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(req)))
+    .andExpect(status().isOk());</code></pre>
+
+    <div class="qa-block">
+      <div class="qa-q">❓ De ce login-ul nu are nevoie de CSRF?</div>
+      <div class="qa-a">La primul login nu există token CSRF (cookieul nu a fost setat încă). De aceea <code>/auth/login</code> e în <code>ignoringRequestMatchers</code>. Endpoint-ul <code>/auth/csrf</code> inițializează cookieul <em>înainte</em> de login.</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>2. JaCoCo — Acoperire cod 81%</h2>
+
+    <h3>Ce măsoară JaCoCo</h3>
+    <p>JaCoCo (Java Code Coverage) instrumentează bytecode-ul Java și înregistrează ce linii, ramuri și instrucțiuni au fost executate în timpul testelor. Rezultatul este un raport HTML detaliat.</p>
+
+    <table>
+      <tr><th>Metric</th><th>Valoare</th><th>Semnificație</th></tr>
+      <tr><td>Instructions</td><td>81%</td><td>Instrucțiuni bytecode executate</td></tr>
+      <tr><td>Branches</td><td>~70%</td><td>Ramuri if/else/switch acoperite</td></tr>
+      <tr><td>Lines</td><td>~83%</td><td>Linii de cod executate</td></tr>
+      <tr><td>Methods</td><td>~88%</td><td>Metode apelate cel puțin o dată</td></tr>
+    </table>
+
+    <h3>Configurare pom.xml</h3>
+    <pre><code><span class="keyword">&lt;plugin&gt;</span>
+    <span class="keyword">&lt;groupId&gt;</span>org.jacoco<span class="keyword">&lt;/groupId&gt;</span>
+    <span class="keyword">&lt;artifactId&gt;</span>jacoco-maven-plugin<span class="keyword">&lt;/artifactId&gt;</span>
+    <span class="keyword">&lt;executions&gt;</span>
+        <span class="keyword">&lt;execution&gt;</span>
+            <span class="keyword">&lt;id&gt;</span>prepare-agent<span class="keyword">&lt;/id&gt;</span>
+            <span class="keyword">&lt;goals&gt;&lt;goal&gt;</span>prepare-agent<span class="keyword">&lt;/goal&gt;&lt;/goals&gt;</span>
+        <span class="keyword">&lt;/execution&gt;</span>
+        <span class="keyword">&lt;execution&gt;</span>
+            <span class="keyword">&lt;id&gt;</span>report<span class="keyword">&lt;/id&gt;</span>
+            <span class="keyword">&lt;phase&gt;</span>test<span class="keyword">&lt;/phase&gt;</span>
+            <span class="keyword">&lt;goals&gt;&lt;goal&gt;</span>report<span class="keyword">&lt;/goal&gt;&lt;/goals&gt;</span>
+        <span class="keyword">&lt;/execution&gt;</span>
+    <span class="keyword">&lt;/executions&gt;</span>
+<span class="keyword">&lt;/plugin&gt;</span></code></pre>
+
+    <h3>Evoluție coverage</h3>
+    <table>
+      <tr><th>Clasă</th><th>Înainte</th><th>După</th><th>Ce s-a adăugat</th></tr>
+      <tr><td><code>AuthController</code></td><td>58%</td><td>100%</td><td>refresh + logout + duplicate username</td></tr>
+      <tr><td><code>HealthController</code></td><td>54%</td><td>100%</td><td>test circuit breaker fallback</td></tr>
+      <tr><td><code>MenuController</code></td><td>16%</td><td>81%</td><td>MenuControllerTest nou (7 teste)</td></tr>
+      <tr><td><code>AuthService</code></td><td>61%</td><td>91%</td><td>refresh valid/revocat/expirat, logout</td></tr>
+      <tr><td><code>UserService</code></td><td>54%</td><td>~75%</td><td>update, changePassword, findFiltered</td></tr>
+      <tr><td><strong>TOTAL</strong></td><td><strong>70%</strong></td><td><strong>81%</strong></td><td>53 → 90 teste</td></tr>
+    </table>
+
+    <h3>Servire raport în aplicație</h3>
+    <pre><code><span class="annotation">@Configuration</span>
+<span class="keyword">public class</span> <span class="type">CoverageResourceConfiguration</span> <span class="keyword">implements</span> <span class="type">WebMvcConfigurer</span> {
+    <span class="annotation">@Override</span>
+    <span class="keyword">public void</span> addResourceHandlers(<span class="type">ResourceHandlerRegistry</span> registry) {
+        <span class="type">String</span> userDir = <span class="type">System</span>.getProperty(<span class="string">"user.dir"</span>);
+        <span class="type">Path</span> direct = <span class="type">Paths</span>.get(userDir, <span class="string">"target"</span>, <span class="string">"site"</span>, <span class="string">"jacoco"</span>);
+        <span class="type">Path</span> withSub = <span class="type">Paths</span>.get(userDir, <span class="string">"user-service"</span>, <span class="string">"target"</span>, <span class="string">"site"</span>, <span class="string">"jacoco"</span>);
+        <span class="type">Path</span> jacocoDir = <span class="type">Files</span>.exists(direct) ? direct : withSub;
+        registry.addResourceHandler(<span class="string">"/coverage/**"</span>)
+                .addResourceLocations(<span class="string">"file:"</span> + jacocoDir.toString().replace(<span class="string">"\\"</span>, <span class="string">"/"</span>) + <span class="string">"/"</span>);
+    }
+}</code></pre>
+
+    <div class="callout warn">
+      <p><strong>De ce detectăm dinamic calea?</strong> <code>user.dir</code> (working directory la pornire) diferă în funcție de cum pornești aplicația. Dacă pornești din root-ul proiectului, calea include <code>user-service/</code>. Dacă pornești din directorul serviciului, nu.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>3. Load Balancing demonstrabil</h2>
+
+    <h3>Conceptul</h3>
+    <p>Spring Cloud LoadBalancer distribuie cererile între mai multe instanțe ale aceluiași serviciu folosind algoritmul <strong>Round Robin</strong>. Fiecare cerere ajunge la o instanță diferită.</p>
+
+    <div class="flow">
+      <div class="step">Angular (4300)</div>
+      <div class="arrow">→</div>
+      <div class="step">API Gateway (8080)</div>
+      <div class="arrow">→</div>
+      <div class="step">lb://user-service</div>
+      <div class="arrow">→</div>
+      <div class="step gray">Instanța 1: 8081</div>
+      <div class="arrow">sau</div>
+      <div class="step gray">Instanța 2: 8083</div>
+    </div>
+
+    <h3>InstanceHeaderFilter.java</h3>
+    <pre><code><span class="annotation">@Component</span>
+<span class="annotation">@Order</span>(1)
+<span class="keyword">public class</span> <span class="type">InstanceHeaderFilter</span> <span class="keyword">extends</span> <span class="type">OncePerRequestFilter</span> {
+
+    <span class="annotation">@Value</span>(<span class="string">"${server.port}"</span>)
+    <span class="keyword">private int</span> port;
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">protected void</span> doFilterInternal(<span class="type">HttpServletRequest</span> req, <span class="type">HttpServletResponse</span> res,
+                                      <span class="type">FilterChain</span> chain) <span class="keyword">throws</span> <span class="type">ServletException</span>, <span class="type">IOException</span> {
+        res.setHeader(<span class="string">"X-Instance-Port"</span>, <span class="type">String</span>.valueOf(port));
+        chain.doFilter(req, res);
+    }
+}</code></pre>
+
+    <h3>Pornire a doua instanță (start-second-instance.ps1)</h3>
+    <pre><code>cd user-service
+mvn spring-boot:run <span class="string">"-Dspring-boot.run.arguments=--server.port=8083"</span></code></pre>
+
+    <h3>Demonstrare</h3>
+    <p>1. Pornești ambele instanțe (8081 + 8083) → amândouă apar în Eureka la <code>http://localhost:8761</code></p>
+    <p>2. F12 → Network → orice request → Response Headers → <code>X-Instance-Port: 8081</code></p>
+    <p>3. La refresh → <code>X-Instance-Port: 8083</code> → Round Robin confirmat vizual</p>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>4. Grafana Auto-provisioning</h2>
+
+    <h3>Problema fără provisioning</h3>
+    <p>Fără configurare automată, la fiecare <code>docker compose up</code> Grafana pornește fără datasource și fără dashboard-uri — trebuie adăugate manual. Cu provisioning, totul e gata la primul pornit.</p>
+
+    <h3>Structura fișierelor</h3>
+    <pre><code>grafana/
+├── provisioning/
+│   ├── datasources/
+│   │   └── prometheus.yml    ← conectare la Prometheus
+│   └── dashboards/
+│       └── default.yml       ← unde caută Grafana dashboard-uri JSON
+└── dashboards/
+    └── spring-boot.json      ← dashboard-ul propriu-zis</code></pre>
+
+    <h3>prometheus.yml (datasource)</h3>
+    <pre><code>apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    url: <span class="string">http://prometheus:9090</span>
+    isDefault: <span class="keyword">true</span>
+    editable: <span class="keyword">false</span></code></pre>
+
+    <h3>default.yml (provider dashboard-uri)</h3>
+    <pre><code>apiVersion: 1
+providers:
+  - name: Default
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards</code></pre>
+
+    <h3>docker-compose.yml (montare volume)</h3>
+    <pre><code>grafana:
+  image: grafana/grafana:latest
+  volumes:
+    - ./grafana/provisioning:/etc/grafana/provisioning
+    - ./grafana/dashboards:/var/lib/grafana/dashboards</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Dacă dashboard-ul nu apare</strong> după modificarea volumelor: containerul a fost creat înainte de adăugarea volumelor. Soluție: <code>docker compose up -d --force-recreate grafana</code></p>
+    </div>
+
+    <h3>Panelurile dashboard-ului</h3>
+    <table>
+      <tr><th>Panel</th><th>Tip</th><th>Query Prometheus</th></tr>
+      <tr><td>HTTP Requests/s</td><td>stat</td><td><code>rate(http_server_requests_seconds_count[1m])</code></td></tr>
+      <tr><td>Error Rate %</td><td>stat</td><td><code>rate(...{status=~"5.."}[1m]) / rate(...[1m])</code></td></tr>
+      <tr><td>CPU Usage</td><td>stat</td><td><code>process_cpu_usage</code></td></tr>
+      <tr><td>JVM Heap Memory</td><td>timeseries</td><td><code>jvm_memory_used_bytes{area="heap"}</code></td></tr>
+      <tr><td>Response Time p99</td><td>timeseries</td><td><code>histogram_quantile(0.99, ...)</code></td></tr>
+    </table>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>5. CI/CD — GitHub Actions</h2>
+
+    <h3>Conceptul</h3>
+    <p>La fiecare push pe <code>master</code> care modifică fișiere din <code>user-service/</code>, GitHub Actions rulează automat testele și construiește JAR-ul.</p>
+
+    <h3>.github/workflows/ci.yml</h3>
+    <pre><code>name: CI — User Service
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - <span class="string">'user-service/**'</span>
+      - <span class="string">'.github/workflows/ci.yml'</span>
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: <span class="string">'21'</span>
+          distribution: <span class="string">'temurin'</span>
+          cache: maven
+
+      - name: Rulare teste
+        working-directory: user-service
+        run: mvn test -B
+
+      - name: Build JAR
+        working-directory: user-service
+        run: mvn package -B -DskipTests
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: user-service/target/site/jacoco/
+          retention-days: 7</code></pre>
+
+    <table>
+      <tr><th>Element</th><th>Rol</th></tr>
+      <tr><td><code>paths:</code></td><td>Rulează DOAR dacă există modificări în user-service (nu la push pe alte servicii)</td></tr>
+      <tr><td><code>cache: maven</code></td><td>Cacheează dependențele Maven între rulări → mai rapid</td></tr>
+      <tr><td><code>if: always()</code></td><td>Uploadează raportul JaCoCo chiar dacă testele eșuează</td></tr>
+      <tr><td><code>temurin</code></td><td>Distribuție OpenJDK gratuită de la Eclipse Adoptium</td></tr>
+    </table>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>6. Remember Me — JWT cu TTL extins</h2>
+
+    <h3>Implementare backend</h3>
+    <pre><code><span class="keyword">private static final long</span> REMEMBER_ME_ACCESS_MS  = 7L  * 24 * 3600 * 1000;  <span class="comment">// 7 zile</span>
+<span class="keyword">private static final long</span> REMEMBER_ME_REFRESH_MS = 30L * 24 * 3600 * 1000; <span class="comment">// 30 zile</span>
+
+<span class="keyword">public</span> <span class="type">AuthResponse</span> login(<span class="type">LoginRequest</span> request) {
+    <span class="comment">// autentificare...</span>
+    <span class="keyword">if</span> (request.isRememberMe()) {
+        saveRefreshToken(user, rawRefreshToken, REMEMBER_ME_REFRESH_MS);
+    } <span class="keyword">else</span> {
+        saveRefreshToken(user, rawRefreshToken, refreshExpirationMs); <span class="comment">// 7 zile default</span>
+    }
+}</code></pre>
+
+    <h3>Implementare frontend</h3>
+    <pre><code><span class="comment">// Cu bifă Remember Me → token persistent după închiderea browserului</span>
+<span class="keyword">if</span> (rememberMe) {
+  localStorage.setItem(<span class="string">'accessToken'</span>, response.accessToken);
+} <span class="keyword">else</span> {
+  <span class="comment">// Fără bifă → token șters la închiderea tab-ului</span>
+  sessionStorage.setItem(<span class="string">'accessToken'</span>, response.accessToken);
+}</code></pre>
+
+    <div class="qa-block">
+      <div class="qa-q">❓ Cum verifici în browser?</div>
+      <div class="qa-a">F12 → Application → Storage. <strong>Local Storage</strong>: token persistent. <strong>Session Storage</strong>: token temporar. Încearcă să închizi și să redeschizi tab-ul — cu Remember Me bifat, rămâi autentificat.</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>7. Pagina Coverage integrată în Angular</h2>
+
+    <h3>Problema X-Frame-Options</h3>
+    <p>Spring Security adaugă implicit headerul <code>X-Frame-Options: DENY</code> care blochează afișarea paginilor în <code>&lt;iframe&gt;</code> din alte origini. Browserul refuză să încarce conținutul.</p>
+
+    <h3>Soluția — filtrare header prin API Gateway</h3>
+    <pre><code><span class="comment"># api-gateway/application.yml</span>
+- id: coverage-report
+  uri: lb://user-service
+  predicates:
+    - Path=/coverage/**
+  filters:
+    - RemoveResponseHeader=X-Frame-Options
+    - RemoveResponseHeader=Content-Security-Policy</code></pre>
+
+    <p>Cererea trece prin gateway pe portul 8080 (același cu API-ul Angular), iar gateway-ul elimină headerele problematice înainte să trimită răspunsul către browser.</p>
+
+    <h3>Componenta Angular (coverage.ts)</h3>
+    <pre><code><span class="annotation">@Component</span>({ standalone: <span class="keyword">true</span>, templateUrl: <span class="string">'./coverage.html'</span> })
+<span class="keyword">export class</span> <span class="type">CoverageComponent</span> {
+  coverageUrl: <span class="type">SafeResourceUrl</span>;
+
+  <span class="keyword">constructor</span>(sanitizer: <span class="type">DomSanitizer</span>) {
+    <span class="comment">// bypassSecurityTrustResourceUrl — permitem URL extern în iframe</span>
+    <span class="keyword">this</span>.coverageUrl = sanitizer.bypassSecurityTrustResourceUrl(
+      <span class="string">`${environment.apiUrl}/coverage/index.html`</span>
+    );
+  }
+}</code></pre>
+
+    <h3>Ruta (app.routes.ts)</h3>
+    <pre><code>{
+  path: <span class="string">'coverage'</span>,
+  canActivate: [roleGuard],
+  data: { roles: [<span class="string">'ADMIN'</span>] },
+  loadComponent: () => import(<span class="string">'./features/dashboard/coverage/coverage'</span>)
+    .then(m => m.<span class="type">CoverageComponent</span>)
+}</code></pre>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>Verificare finală — URL-uri și comenzi</h2>
+
+    <table>
+      <tr><th>Serviciu</th><th>URL</th><th>Credențiale</th></tr>
+      <tr><td>Aplicație Angular</td><td>http://localhost:4300</td><td>—</td></tr>
+      <tr><td>Coverage (în app)</td><td>http://localhost:4300/dashboard/coverage</td><td>ADMIN only</td></tr>
+      <tr><td>Swagger UI</td><td>http://localhost:8081/swagger-ui.html</td><td>—</td></tr>
+      <tr><td>Eureka Dashboard</td><td>http://localhost:8761</td><td>—</td></tr>
+      <tr><td>Config Server</td><td>http://localhost:8888/user-service/default</td><td>—</td></tr>
+      <tr><td>Grafana</td><td>http://localhost:3000</td><td>admin / admin</td></tr>
+      <tr><td>Prometheus</td><td>http://localhost:9090</td><td>—</td></tr>
+    </table>
+
+    <h3>Comenzi utile</h3>
+    <pre><code><span class="comment"># Generare raport JaCoCo</span>
+cd user-service && mvn test -B
+
+<span class="comment"># Pornire infrastructură Docker</span>
+docker compose up -d
+
+<span class="comment"># Repornire Grafana cu volume corecte</span>
+docker compose up -d --force-recreate grafana
+
+<span class="comment"># A doua instanță user-service (port 8083)</span>
+.\start-second-instance.ps1</code></pre>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — CSRF, JaCoCo, CI/CD și Load Balancing</h2>
+
+<div class="callout" style="background:#0f2744;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> user-service cu Spring Security configurat (Tutorial 09). Frontend Angular cu HttpClient (Tutorial 13).</p>
+</div>
+
+<div style="background:#0f2744;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 1 — Activează protecția CSRF în backend</strong>
+  <div style="margin-top:12px">
+    <p>În <code>SecurityConfiguration.java</code>, înlocuiește <code>csrf.disable()</code> cu:</p>
+    <pre><code>.csrf(csrf -> csrf
+    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+    // withHttpOnlyFalse() = Angular poate citi cookie-ul XSRF-TOKEN din JavaScript
+    .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+    // CsrfTokenRequestAttributeHandler = Spring 6 nu mai evaluează lazy token-ul
+    .ignoringRequestMatchers("/auth/login", "/auth/register",
+                             "/auth/refresh", "/auth/logout",
+                             "/actuator/**", "/api/health/**")
+    // Endpoint-urile de login/register nu pot trimite CSRF (nu au token încă)
+)</code></pre>
+    <p>Adaugă endpoint dedicat pentru inițializarea cookie-ului în <code>AuthController.java</code>:</p>
+    <pre><code>@GetMapping("/csrf")
+public ResponseEntity&lt;Void&gt; csrf(HttpServletRequest request, HttpServletResponse response) {
+    CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+    if (token != null) token.getToken();   // forțează scrierea cookie-ului în răspuns
+    return ResponseEntity.ok().build();
+}</code></pre>
+    <p>Adaugă <code>/auth/csrf</code> la <code>permitAll()</code> și la <code>ignoringRequestMatchers</code> nu (trebuie protejat de CSRF pentru că îl inițializăm).</p>
+  </div>
+</div>
+
+<div style="background:#0f2744;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 2 — Configurează Angular să trimită token-ul CSRF</strong>
+  <div style="margin-top:12px">
+    <p>În <code>src/app/app.config.ts</code>, modifică <code>provideHttpClient</code>:</p>
+    <pre><code>import { withXsrfConfiguration, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideAppInitializer, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHttpClient(
+      withInterceptors([jwtInterceptor]),
+      withXsrfConfiguration({
+        cookieName: 'XSRF-TOKEN',    // Angular citește cookie-ul cu acest nume
+        headerName: 'X-XSRF-TOKEN'  // și îl trimite ca header la POST/PUT/DELETE
+      })
+    ),
+    provideAppInitializer(async () => {
+      const http = inject(HttpClient);
+      // La startup, Angular face un GET la /auth/csrf care forțează crearea cookie-ului
+      await firstValueFrom(
+        http.get(`${environment.apiUrl}/auth/csrf`, { withCredentials: true })
+      ).catch(() => {});
+    })
+  ]
+};</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f2744;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 3 — Generează raportul JaCoCo</strong>
+  <div style="margin-top:12px">
+    <p>Adaugă plugin-ul în <code>user-service/pom.xml</code>, în secțiunea <code>&lt;build&gt;&lt;plugins&gt;</code>:</p>
+    <pre><code>&lt;plugin&gt;
+    &lt;groupId&gt;org.jacoco&lt;/groupId&gt;
+    &lt;artifactId&gt;jacoco-maven-plugin&lt;/artifactId&gt;
+    &lt;executions&gt;
+        &lt;execution&gt;
+            &lt;id&gt;prepare-agent&lt;/id&gt;
+            &lt;goals&gt;&lt;goal&gt;prepare-agent&lt;/goal&gt;&lt;/goals&gt;
+        &lt;/execution&gt;
+        &lt;execution&gt;
+            &lt;id&gt;report&lt;/id&gt;
+            &lt;phase&gt;test&lt;/phase&gt;
+            &lt;goals&gt;&lt;goal&gt;report&lt;/goal&gt;&lt;/goals&gt;
+        &lt;/execution&gt;
+    &lt;/executions&gt;
+&lt;/plugin&gt;</code></pre>
+    <p>Rulează testele și generează raportul:</p>
+    <pre><code>cd user-service
+mvn test -B
+# Raportul apare la: target/site/jacoco/index.html</code></pre>
+  </div>
+</div>
+
+<div style="background:#0f2744;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#818cf8">Pasul 4 — Configurează GitHub Actions CI/CD</strong>
+  <div style="margin-top:12px">
+    <p>Creează fișierul <code>.github/workflows/ci.yml</code> în rădăcina proiectului:</p>
+    <pre><code>name: CI - User Service
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'user-service/**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Rulare teste
+        working-directory: user-service
+        run: mvn test -B
+
+      - name: Build JAR
+        working-directory: user-service
+        run: mvn package -B -DskipTests
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: user-service/target/site/jacoco/
+          retention-days: 7</code></pre>
+    <p>La fiecare <code>git push</code> pe <code>master</code>, GitHub rulează automat testele și construiește JAR-ul. Rezultatul e vizibil pe GitHub → tab <strong>Actions</strong>.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare CSRF:</strong> F12 → Application → Cookies → <code>XSRF-TOKEN</code> prezent. F12 → Network → orice POST → Request Headers → <code>X-XSRF-TOKEN: &lt;valoare&gt;</code></p>
+  <p><strong>Verificare JaCoCo:</strong> <code>http://localhost:8081/coverage/index.html</code> → raportul JaCoCo afișat în browser.</p>
+  <p><strong>Verificare CI/CD:</strong> Fă un push pe master → github.com → Actions → workflow-ul rulează verde.</p>
+</div>
+</div>
+
+  <footer>Portal Admitere &copy; 2026 – Proiect licență AMSS · Ziua 16</footer>
+</body>
+</html>

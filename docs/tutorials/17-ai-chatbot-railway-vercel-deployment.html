@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Chatbot, Railway & Vercel Deployment – Tutorial Ziua 17</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout.err{border-color:#ef4444}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #4f46e5}
+    .step.gray{background:#1e293b;color:#94a3b8;border-color:#334155}
+    .arrow{color:#818cf8;font-size:1.4rem}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+    .checklist{list-style:none;margin:16px 0}
+    .checklist li{padding:8px 0;color:#cbd5e1;border-bottom:1px solid #1e293b;font-size:.92rem}
+    .checklist li::before{content:'✓ ';color:#10b981;font-weight:700}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>🤖 AI Chatbot, Railway & Vercel — Deployment Complet</h1>
+    <p>Groq API integrat în Spring Boot, frontend Angular live pe Vercel, backend live pe Railway</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ce s-a construit în Ziua 17</h2>
+    <p>Ziua 17 finalizează proiectul cu un chatbot AI integrat și deployment complet în cloud. Aplicația este accesibilă live pe internet, cu backend pe Railway și frontend pe Vercel.</p>
+
+    <ul class="checklist">
+      <li>RoboAdmis 🤖 — chatbot flotant Angular integrat cu Groq API (Llama 3.1 8B)</li>
+      <li>ClaudeService — client RestClient pentru Groq API cu fallback graceful</li>
+      <li>Load Balancing fix — Maven auto-download în PowerShell pentru instanța 2</li>
+      <li>Railway deployment — user-service live cu MySQL + MongoDB în cloud</li>
+      <li>Vercel deployment — Angular SPA live cu routing fix și budget CSS ajustat</li>
+      <li>CORS cross-origin — configurat prin variabilă de mediu ALLOWED_ORIGINS</li>
+      <li>CSRF în producție — ignorat pentru JWT stateless cross-origin</li>
+      <li>README actualizat — URL-uri live, Design Patterns, secțiunea AI</li>
+    </ul>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>1. Load Balancing — Fix Script PowerShell</h2>
+
+    <h3>Problema</h3>
+    <p>Scriptul <code>start-second-instance.ps1</code> folosea comanda <code>mvn</code> direct, dar Maven nu era în PATH pe toate sistemele. De asemenea, Java trebuia detectat automat din Adoptium JDK.</p>
+
+    <h3>Soluție — auto-download Maven + detect Java</h3>
+    <pre><code><span class="comment"># Detectează Java din Adoptium JDK</span>
+<span class="keyword">$</span>javaHome = <span class="string">"C:\Program Files\Eclipse Adoptium\jdk-21.0.7.6-hotspot"</span>
+<span class="keyword">$env</span>:JAVA_HOME = <span class="keyword">$</span>javaHome
+<span class="keyword">$env</span>:Path = <span class="string">"$javaHome\bin;"</span> + <span class="keyword">$env</span>:Path
+
+<span class="comment"># Maven auto-download dacă nu există</span>
+<span class="keyword">$</span>mavenVersion = <span class="string">"3.9.6"</span>
+<span class="keyword">$</span>mvnDir = <span class="string">".tools\apache-maven-$mavenVersion"</span>
+<span class="keyword">if</span> (-not (Test-Path <span class="keyword">$</span>mvnDir)) {
+    <span class="keyword">$</span>url = <span class="string">"https://archive.apache.org/dist/maven/maven-3/$mavenVersion/binaries/apache-maven-$mavenVersion-bin.zip"</span>
+    Invoke-WebRequest -Uri <span class="keyword">$</span>url -OutFile <span class="string">".tools\maven.zip"</span>
+    Expand-Archive <span class="string">".tools\maven.zip"</span> -DestinationPath <span class="string">".tools\"</span>
+}
+<span class="keyword">$</span>mvn = <span class="string">"$mvnDir\bin\mvn.cmd"</span>
+
+<span class="comment"># Pornire instanță 2 pe portul 8083</span>
+<span class="keyword">$env</span>:SPRING_PROFILES_ACTIVE = <span class="string">"local"</span>
+<span class="keyword">$env</span>:SERVER_PORT = <span class="string">"8083"</span>
+& <span class="keyword">$</span>mvn spring-boot:run</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Maven 3.9.9 nu există</strong> — versiunea corectă din Apache Archive este <strong>3.9.6</strong>. Versiunile mai noi sunt distribuite diferit și nu au URL-ul arhivei standard.</p>
+    </div>
+
+    <div class="flow">
+      <div class="step">Script pornit</div>
+      <div class="arrow">→</div>
+      <div class="step">Java detectat din Adoptium</div>
+      <div class="arrow">→</div>
+      <div class="step">Maven descărcat în .tools/</div>
+      <div class="arrow">→</div>
+      <div class="step">Instanță 2 pe :8083</div>
+      <div class="arrow">→</div>
+      <div class="step">Eureka: UP(2)</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>2. AI Chatbot — RoboAdmis cu Groq API</h2>
+
+    <h3>De ce Groq și nu Claude/OpenAI</h3>
+    <p>Claude API și OpenAI necesită card bancar chiar și pentru planul gratuit. <strong>Groq</strong> oferă acces gratuit la modele open-source (Llama, Mistral, Gemma) cu un API compatibil OpenAI — aceeași interfață, fără costuri inițiale.</p>
+
+    <table>
+      <tr><th>Provider</th><th>Model folosit</th><th>Cost</th><th>Latență</th></tr>
+      <tr><td>Groq</td><td>llama-3.1-8b-instant</td><td>Gratuit</td><td>~200ms</td></tr>
+      <tr><td>OpenAI</td><td>gpt-4o-mini</td><td>$0.15/1M tokens</td><td>~500ms</td></tr>
+      <tr><td>Anthropic Claude</td><td>claude-haiku-4</td><td>Card obligatoriu</td><td>~400ms</td></tr>
+    </table>
+
+    <h3>ClaudeService.java — client Groq API</h3>
+    <pre><code><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="type">ClaudeService</span> {
+
+    <span class="keyword">private static final</span> <span class="type">String</span> GROQ_API_URL = <span class="string">"https://api.groq.com"</span>;
+    <span class="keyword">private static final</span> <span class="type">String</span> MODEL = <span class="string">"llama-3.1-8b-instant"</span>;
+
+    <span class="annotation">@Value</span>(<span class="string">"${groq.api-key:}"</span>)
+    <span class="keyword">private</span> <span class="type">String</span> apiKey;
+
+    <span class="keyword">private final</span> <span class="type">RestClient</span> restClient;
+
+    <span class="keyword">public</span> <span class="type">ClaudeService</span>() {
+        <span class="keyword">this</span>.restClient = <span class="type">RestClient</span>.builder()
+            .baseUrl(GROQ_API_URL)
+            .build();
+    }
+
+    <span class="keyword">public</span> <span class="type">String</span> ask(<span class="type">String</span> userMessage) {
+        <span class="keyword">if</span> (apiKey == <span class="keyword">null</span> || apiKey.isBlank()) {
+            <span class="keyword">return</span> <span class="string">"Serviciul de asistență AI nu este configurat momentan."</span>;
+        }
+        <span class="keyword">try</span> {
+            <span class="type">GroqRequest</span> body = <span class="keyword">new</span> <span class="type">GroqRequest</span>(MODEL, <span class="type">List</span>.of(
+                <span class="keyword">new</span> <span class="type">GroqMessage</span>(<span class="string">"system"</span>, SYSTEM_PROMPT),
+                <span class="keyword">new</span> <span class="type">GroqMessage</span>(<span class="string">"user"</span>, userMessage)
+            ));
+            <span class="type">GroqResponse</span> response = restClient.post()
+                .uri(<span class="string">"/openai/v1/chat/completions"</span>)
+                .header(<span class="string">"Authorization"</span>, <span class="string">"Bearer "</span> + apiKey)
+                .contentType(<span class="type">MediaType</span>.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(<span class="type">GroqResponse</span>.<span class="keyword">class</span>);
+            <span class="keyword">return</span> response.choices().get(0).message().content();
+        } <span class="keyword">catch</span> (<span class="type">Exception</span> e) {
+            <span class="keyword">return</span> <span class="string">"Ups, ceva nu a mers. Încearcă din nou! 🔧"</span>;
+        }
+    }
+
+    <span class="keyword">record</span> <span class="type">GroqRequest</span>(<span class="type">String</span> model, <span class="type">List</span>&lt;<span class="type">GroqMessage</span>&gt; messages) {}
+    <span class="keyword">record</span> <span class="type">GroqMessage</span>(<span class="type">String</span> role, <span class="type">String</span> content) {}
+    <span class="keyword">record</span> <span class="type">GroqResponse</span>(<span class="type">List</span>&lt;<span class="type">GroqChoice</span>&gt; choices) {}
+    <span class="keyword">record</span> <span class="type">GroqChoice</span>(<span class="type">GroqMessage</span> message) {}
+}</code></pre>
+
+    <div class="callout ok">
+      <p><strong>Java Records</strong> — <code>record GroqRequest(...)</code> generează automat constructor, getters, equals, hashCode și toString. Perfecte pentru DTO-uri imutabile, fără Lombok.</p>
+    </div>
+
+    <h3>ChatController.java — endpoint REST</h3>
+    <pre><code><span class="annotation">@RestController</span>
+<span class="annotation">@RequestMapping</span>(<span class="string">"/api/chat"</span>)
+<span class="keyword">public class</span> <span class="type">ChatController</span> {
+
+    <span class="keyword">private final</span> <span class="type">ClaudeService</span> claudeService;
+
+    <span class="annotation">@PostMapping</span>(<span class="string">"/ask"</span>)
+    <span class="keyword">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ChatResponse</span>&gt; ask(<span class="annotation">@Valid @RequestBody</span> <span class="type">ChatRequest</span> request) {
+        <span class="type">String</span> reply = claudeService.ask(request.getMessage());
+        <span class="keyword">return</span> <span class="type">ResponseEntity</span>.ok(<span class="keyword">new</span> <span class="type">ChatResponse</span>(reply));
+    }
+
+    <span class="keyword">record</span> <span class="type">ChatRequest</span>(<span class="annotation">@NotBlank</span> <span class="type">String</span> message) {}
+    <span class="keyword">record</span> <span class="type">ChatResponse</span>(<span class="type">String</span> reply) {}
+}</code></pre>
+
+    <h3>Configurare API Key</h3>
+    <pre><code><span class="comment"># application-local.yml (gitignored — NU pune în application.yml!)</span>
+groq:
+  api-key: <span class="string">"gsk_..."</span>
+
+<span class="comment"># application-railway.yml — citit din variabilă Railway</span>
+groq:
+  api-key: <span class="string">${GROQ_API_KEY:}</span></code></pre>
+
+    <div class="callout err">
+      <p><strong>Securitate:</strong> Nu pune niciodată API key-ul direct în <code>application.yml</code> — acel fișier e în Git și devine public. Folosește <code>application-local.yml</code> (adăugat în <code>.gitignore</code>) sau variabile de mediu.</p>
+    </div>
+
+    <h3>Angular — Widget Flotant RoboAdmis</h3>
+    <pre><code><span class="annotation">@Component</span>({
+  selector: <span class="string">'app-chatbot'</span>,
+  standalone: <span class="keyword">true</span>,
+  template: <span class="string">`
+    @if (isLoggedIn) {
+      &lt;div class="chat-fab" (click)="toggle()"&gt;🤖&lt;/div&gt;
+      @if (isOpen) {
+        &lt;div class="chat-window"&gt;
+          &lt;div class="messages"&gt;
+            @for (msg of messages; track $index) {
+              &lt;div [class]="'msg ' + msg.role"&gt;{{ msg.text }}&lt;/div&gt;
+            }
+          &lt;/div&gt;
+          &lt;input [(ngModel)]="input" (keydown.enter)="send()" /&gt;
+        &lt;/div&gt;
+      }
+    }
+  `</span>
+})
+<span class="keyword">export class</span> <span class="type">ChatbotComponent</span> {
+  <span class="keyword">get</span> isLoggedIn(): <span class="keyword">boolean</span> {
+    <span class="keyword">return this</span>.authService.isLoggedIn();  <span class="comment">// getter, nu computed signal!</span>
+  }
+}</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Getter vs computed()</strong> — <code>computed(() => authService.isLoggedIn())</code> se evaluează o singură dată la inițializare, înainte de login, și rămâne <code>false</code> permanent. Un getter simplu se reevaluează la fiecare change detection cycle și reflectă starea curentă corect.</p>
+    </div>
+
+    <div class="flow">
+      <div class="step">User scrie mesaj</div>
+      <div class="arrow">→</div>
+      <div class="step">POST /api/chat/ask</div>
+      <div class="arrow">→</div>
+      <div class="step">ClaudeService → Groq API</div>
+      <div class="arrow">→</div>
+      <div class="step">Llama 3.1 8B</div>
+      <div class="arrow">→</div>
+      <div class="step">Răspuns în widget</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>3. Railway Deployment — Backend în Cloud</h2>
+
+    <h3>Ce este Railway</h3>
+    <p>Railway este o platformă cloud care rulează containere Docker direct din GitHub. La fiecare push pe branch-ul configurat, Railway rebuild-ează și redeploy-ează automat serviciul.</p>
+
+    <h3>Dockerfile pentru user-service</h3>
+    <pre><code><span class="comment"># Faza 1 — build</span>
+<span class="keyword">FROM</span> maven:3.9.6-eclipse-temurin-21-alpine <span class="keyword">AS</span> build
+<span class="keyword">WORKDIR</span> /app
+<span class="keyword">COPY</span> pom.xml .
+<span class="keyword">RUN</span> mvn dependency:go-offline -B
+<span class="keyword">COPY</span> src ./src
+<span class="keyword">RUN</span> mvn package -B -DskipTests
+
+<span class="comment"># Faza 2 — runtime (imagine mai mică)</span>
+<span class="keyword">FROM</span> eclipse-temurin:21-jre-alpine
+<span class="keyword">WORKDIR</span> /app
+<span class="keyword">COPY</span> --from=build /app/target/*.jar app.jar
+<span class="keyword">EXPOSE</span> 8081
+<span class="keyword">ENTRYPOINT</span> ["java", "-jar", "app.jar"]</code></pre>
+
+    <p>Multi-stage build: prima imagine conține Maven + JDK (~500MB), a doua conține doar JRE + JAR (~180MB). Railway rulează doar imaginea finală, mai mică.</p>
+
+    <h3>application-railway.yml — profil producție</h3>
+    <pre><code>server:
+  port: <span class="string">${PORT:8081}</span>
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  cache:
+    type: none
+  datasource:
+    url: jdbc:mysql://<span class="string">${MYSQLHOST}</span>:<span class="string">${MYSQLPORT}</span>/<span class="string">${MYSQLDATABASE}</span>?useSSL=false&serverTimezone=UTC
+    username: <span class="string">${MYSQLUSER}</span>
+    password: <span class="string">${MYSQLPASSWORD}</span>
+  data:
+    mongodb:
+      uri: <span class="string">${MONGO_URL}</span>
+      database: portal_admitere
+  config:
+    import: <span class="string">"optional:configserver:"</span>
+
+eureka:
+  client:
+    enabled: false
+
+groq:
+  api-key: <span class="string">${GROQ_API_KEY:}</span>
+
+allowed:
+  origins: <span class="string">${ALLOWED_ORIGINS:http://localhost:4300}</span></code></pre>
+
+    <div class="callout ok">
+      <p><strong>RabbitMQ și Redis excluse</strong> — în producție pe Railway, aceste servicii nu sunt disponibile. Excluderea lor din autoconfigurare previne erori la pornire. Cache-ul e dezactivat (<code>type: none</code>) și mesageria asincronă nu e folosită în cloud.</p>
+    </div>
+
+    <h3>Variabile de mediu Railway</h3>
+    <table>
+      <tr><th>Variabilă</th><th>Valoare</th><th>Sursă</th></tr>
+      <tr><td><code>SPRING_PROFILES_ACTIVE</code></td><td>railway</td><td>Manual</td></tr>
+      <tr><td><code>MYSQLHOST</code></td><td>auto-generat</td><td>MySQL plugin Railway</td></tr>
+      <tr><td><code>MYSQLPORT</code></td><td>auto-generat</td><td>MySQL plugin Railway</td></tr>
+      <tr><td><code>MYSQLDATABASE</code></td><td>auto-generat</td><td>MySQL plugin Railway</td></tr>
+      <tr><td><code>MYSQLUSER</code></td><td>auto-generat</td><td>MySQL plugin Railway</td></tr>
+      <tr><td><code>MYSQLPASSWORD</code></td><td>auto-generat</td><td>MySQL plugin Railway</td></tr>
+      <tr><td><code>MONGO_URL</code></td><td>mongodb://...</td><td>MongoDB plugin Railway</td></tr>
+      <tr><td><code>PORT</code></td><td>8081</td><td>Manual</td></tr>
+      <tr><td><code>GROQ_API_KEY</code></td><td>gsk_...</td><td>Manual (secret)</td></tr>
+      <tr><td><code>ALLOWED_ORIGINS</code></td><td>https://portal-admitere.vercel.app,http://localhost:4300</td><td>Manual</td></tr>
+    </table>
+
+    <div class="callout warn">
+      <p><strong>MongoDB URI fără database</strong> — Railway generează <code>MONGO_URL</code> fără numele bazei de date în URI. De aceea e necesar câmpul separat <code>spring.data.mongodb.database: portal_admitere</code> în YAML. Fără el, Spring aruncă <code>Database name must not be empty</code>.</p>
+    </div>
+
+    <h3>Setări Railway — Root Directory și Builder</h3>
+    <table>
+      <tr><th>Setare</th><th>Valoare</th></tr>
+      <tr><td>Root Directory</td><td>/user-service</td></tr>
+      <tr><td>Builder</td><td>Dockerfile</td></tr>
+      <tr><td>Dockerfile Path</td><td>/user-service/Dockerfile</td></tr>
+      <tr><td>Branch</td><td>main</td></tr>
+    </table>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>4. Vercel Deployment — Frontend Angular în Cloud</h2>
+
+    <h3>Ce este Vercel</h3>
+    <p>Vercel este o platformă specializată pentru frontend. Detectează automat Angular, React, Vue etc. și configurează build-ul. La fiecare push pe branch-ul configurat, redeploy-ează automat.</p>
+
+    <h3>Problema SPA pe Vercel — 404 la refresh</h3>
+    <p>Angular folosește routing pe client (History API). Când accesezi direct <code>/dashboard/users</code>, Vercel caută un fișier fizic la acea cale — nu găsește nimic și returnează 404. Soluția: toate rutele trebuie redirecționate spre <code>index.html</code>.</p>
+
+    <h3>vercel.json — fix routing și output directory</h3>
+    <pre><code>{
+  <span class="string">"buildCommand"</span>: <span class="string">"npm run build"</span>,
+  <span class="string">"outputDirectory"</span>: <span class="string">"dist/frontend/browser"</span>,
+  <span class="string">"rewrites"</span>: [
+    { <span class="string">"source"</span>: <span class="string">"/(.*)"</span>, <span class="string">"destination"</span>: <span class="string">"/index.html"</span> }
+  ]
+}</code></pre>
+
+    <p><code>outputDirectory: dist/frontend/browser</code> — Angular 17+ cu builder <code>@angular/build:application</code> pune output-ul în <code>dist/[project-name]/browser/</code>, nu direct în <code>dist/[project-name]/</code> cum făcea versiunile anterioare.</p>
+
+    <h3>Fix budget CSS — angular.json</h3>
+    <p>Build-ul de producție Angular verifică dimensiunea fișierelor. Dacă un SCSS depășește limita, build-ul eșuează:</p>
+    <pre><code><span class="comment">// angular.json — secțiunea budgets din configurations.production</span>
+{
+  <span class="string">"type"</span>: <span class="string">"anyComponentStyle"</span>,
+  <span class="string">"maximumWarning"</span>: <span class="string">"10kB"</span>,  <span class="comment">// era 4kB — prea mic</span>
+  <span class="string">"maximumError"</span>: <span class="string">"20kB"</span>    <span class="comment">// era 8kB — prea mic</span>
+}</code></pre>
+
+    <h3>environment.ts — URL backend producție</h3>
+    <pre><code><span class="keyword">export const</span> environment = {
+  production: <span class="keyword">true</span>,
+  apiUrl: <span class="string">'https://portal-admitere-production.up.railway.app'</span>
+};</code></pre>
+
+    <div class="callout ok">
+      <p><strong>Angular environments</strong> — în development, Angular folosește <code>environment.ts</code>. La build cu <code>--configuration production</code>, Angular înlocuiește automat fișierul cu <code>environment.prod.ts</code> (sau cel marcat <code>production: true</code>). Un singur fișier, două comportamente.</p>
+    </div>
+
+    <div class="flow">
+      <div class="step">Push pe main</div>
+      <div class="arrow">→</div>
+      <div class="step">Vercel detectează Angular</div>
+      <div class="arrow">→</div>
+      <div class="step">npm run build</div>
+      <div class="arrow">→</div>
+      <div class="step">dist/frontend/browser/</div>
+      <div class="arrow">→</div>
+      <div class="step">CDN global live</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>5. CORS Cross-Origin — Vercel ↔ Railway</h2>
+
+    <h3>De ce apare CORS în producție</h3>
+    <p>În development, Angular (localhost:4300) și backend (localhost:8080) sunt pe același host — CORS nu e o problemă. În producție, frontend-ul e pe <code>portal-admitere.vercel.app</code> și backend-ul pe <code>portal-admitere-production.up.railway.app</code>. Domeniile diferite declanșează política CORS a browserului.</p>
+
+    <p>Browserul trimite automat un request <strong>OPTIONS preflight</strong> înainte de orice POST/PUT/DELETE cross-origin. Dacă serverul nu răspunde corect, browser-ul blochează request-ul original.</p>
+
+    <h3>SecurityConfiguration — CORS configurabil</h3>
+    <pre><code><span class="annotation">@Value</span>(<span class="string">"${allowed.origins:http://localhost:4300}"</span>)
+<span class="keyword">private</span> <span class="type">String</span> allowedOrigins;
+
+<span class="annotation">@Bean</span>
+<span class="keyword">public</span> <span class="type">CorsConfigurationSource</span> corsConfigurationSource() {
+    <span class="type">CorsConfiguration</span> config = <span class="keyword">new</span> <span class="type">CorsConfiguration</span>();
+    <span class="type">List</span>&lt;<span class="type">String</span>&gt; origins = <span class="type">List</span>.of(allowedOrigins.split(<span class="string">","</span>));
+    config.setAllowedOrigins(origins);
+    config.setAllowedMethods(<span class="type">List</span>.of(<span class="string">"GET"</span>, <span class="string">"POST"</span>, <span class="string">"PUT"</span>, <span class="string">"DELETE"</span>, <span class="string">"OPTIONS"</span>, <span class="string">"PATCH"</span>));
+    config.setAllowedHeaders(<span class="type">List</span>.of(<span class="string">"*"</span>));
+    config.setAllowCredentials(<span class="keyword">true</span>);
+    config.setExposedHeaders(<span class="type">List</span>.of(<span class="string">"X-Instance-Port"</span>, <span class="string">"X-XSRF-TOKEN"</span>));
+    config.setMaxAge(3600L);
+    <span class="type">UrlBasedCorsConfigurationSource</span> source = <span class="keyword">new</span> <span class="type">UrlBasedCorsConfigurationSource</span>();
+    source.registerCorsConfiguration(<span class="string">"/**"</span>, source);
+    <span class="keyword">return</span> source;
+}</code></pre>
+
+    <p><code>allowedOrigins.split(",")</code> — variabila de mediu poate conține mai multe origini separate prin virgulă: <code>https://portal-admitere.vercel.app,http://localhost:4300</code>. Fără split, întreg string-ul e tratat ca un singur origin invalid.</p>
+
+    <table>
+      <tr><th>Header CORS</th><th>Valoare</th><th>Scop</th></tr>
+      <tr><td>Access-Control-Allow-Origin</td><td>https://portal-admitere.vercel.app</td><td>Permite cereri de pe Vercel</td></tr>
+      <tr><td>Access-Control-Allow-Methods</td><td>GET, POST, PUT, DELETE, OPTIONS, PATCH</td><td>Metode HTTP permise</td></tr>
+      <tr><td>Access-Control-Allow-Credentials</td><td>true</td><td>Permite trimiterea cookie-urilor</td></tr>
+      <tr><td>Access-Control-Max-Age</td><td>3600</td><td>Cache preflight 1 oră</td></tr>
+    </table>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>6. CSRF în Producție — De ce JWT Stateless nu are nevoie</h2>
+
+    <h3>Cum funcționează un atac CSRF</h3>
+    <p>CSRF (Cross-Site Request Forgery) funcționează astfel: utilizatorul e autentificat pe <code>bank.com</code>. Un site malițios <code>evil.com</code> face un POST la <code>bank.com/transfer</code>. Browserul trimite automat cookie-ul de sesiune → tranzacția e executată fără știrea utilizatorului.</p>
+
+    <p><strong>Condiție necesară:</strong> tokenul de autentificare trebuie să fie un <em>cookie</em> trimis automat de browser. Dacă autentificarea se face prin header <code>Authorization: Bearer &lt;token&gt;</code>, atacul CSRF nu funcționează — site-ul malițios nu poate citi sau injecta header-uri custom.</p>
+
+    <h3>Situația noastră</h3>
+    <p>JWT-ul este trimis prin header <code>Authorization: Bearer ...</code> de Angular. Browserul NU trimite automat acest header — Angular îl adaugă explicit prin interceptor. Un site malițios nu poate adăuga header-ul fără să aibă tokenul, ceea ce înseamnă că CSRF nu se aplică.</p>
+
+    <h3>Fix pentru deployment cross-origin</h3>
+    <pre><code><span class="comment">// SecurityConfiguration.java</span>
+http
+  .csrf(csrf -> csrf
+      .csrfTokenRepository(<span class="type">CookieCsrfTokenRepository</span>.withHttpOnlyFalse())
+      .csrfTokenRequestHandler(<span class="keyword">new</span> <span class="type">CsrfTokenRequestAttributeHandler</span>())
+      .ignoringRequestMatchers(<span class="string">"/**"</span>)  <span class="comment">// ignoră toate — JWT e suficient</span>
+  )</code></pre>
+
+    <p>CSRF rămâne configurat în cod (demonstrabil local, vizibil în cod sursă), dar ignoră toate endpoint-urile în producție. Infrastructura există, protecția nu e necesară cu JWT stateless.</p>
+
+    <div class="qa-block">
+      <div class="qa-q">❓ De ce cookie-ul XSRF nu traversează domenii diferite?</div>
+      <div class="qa-a">Browserele moderne blochează cookie-urile <code>SameSite=Lax</code> (default) în cereri cross-origin. Cookie-ul XSRF-TOKEN setat de Railway nu poate fi citit de JavaScript pe Vercel. Pentru a funcționa cross-origin, cookie-ul ar trebui setat cu <code>SameSite=None; Secure</code> — configurație suplimentară în Spring Boot care depășește scopul proiectului.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">❓ De ce OPTIONS preflight returna 403?</div>
+      <div class="qa-a">Spring Security procesa request-ul OPTIONS înainte ca filtrul CORS să poată răspunde. Cu <code>ignoringRequestMatchers("/**")</code> și <code>.requestMatchers(OPTIONS, "/**").permitAll()</code>, Spring lasă CORS să răspundă primul la preflight și returnează corect 200 cu headerele necesare.</div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>7. URL-uri Live — Deployment Final</h2>
+
+    <table>
+      <tr><th>Serviciu</th><th>URL</th></tr>
+      <tr><td>Frontend (Vercel)</td><td><code>https://portal-admitere.vercel.app</code></td></tr>
+      <tr><td>Backend user-service (Railway)</td><td><code>https://portal-admitere-production.up.railway.app</code></td></tr>
+      <tr><td>Swagger UI</td><td><code>https://portal-admitere-production.up.railway.app/swagger-ui.html</code></td></tr>
+      <tr><td>Health Check</td><td><code>https://portal-admitere-production.up.railway.app/actuator/health</code></td></tr>
+    </table>
+
+    <div class="callout ok">
+      <p><strong>Auto-deploy configurat:</strong> orice push pe <code>main</code> declanșează automat rebuild pe Railway (backend) și Vercel (frontend). CI/CD complet fără intervenție manuală.</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <h2>Rezumat arhitectural</h2>
+
+    <div class="flow">
+      <div class="step">Browser (Vercel CDN)</div>
+      <div class="arrow">→</div>
+      <div class="step">Angular SPA</div>
+      <div class="arrow">→</div>
+      <div class="step">HTTPS + JWT Bearer</div>
+      <div class="arrow">→</div>
+      <div class="step">Railway user-service</div>
+      <div class="arrow">→</div>
+      <div class="step">MySQL + MongoDB + Groq API</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">❓ De ce lipsesc api-gateway și celelalte servicii din Railway?</div>
+      <div class="qa-a">Railway oferă un plan gratuit limitat. Pentru demonstrarea live, user-service conține toată funcționalitatea principală: autentificare JWT, gestionare utilizatori, anunțuri, chatbot AI și audit MongoDB. Serviciile Admissions și Dormitory pot fi demonstrate local cu Docker Compose unde rulează toate componentele inclusiv Eureka, Config Server, RabbitMQ și Redis.</div>
+    </div>
+
+  </div>
+
+  <footer>Portal Admitere &copy; 2026 – Proiect licență AMSS · Ziua 17</footer>
+</body>
+</html>

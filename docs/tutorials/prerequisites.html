@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prerequisite – Instalare Mediu de Lucru</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#064e3b,#065f46);padding:48px 24px;text-align:center}
+    header h1{font-size:2.2rem;color:#fff;font-weight:700}
+    header p{color:#a7f3d0;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#34d399;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#6ee7b7;margin:22px 0 8px}
+    p{color:#cbd5e1;margin-bottom:14px}
+    ul,ol{color:#cbd5e1;padding-left:22px;margin-bottom:14px}
+    li{margin-bottom:8px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:22px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#6ee7b7}
+    .callout{background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b;background:#1c1207}
+    .callout.info{border-color:#38bdf8;background:#0f2744}
+    .callout.danger{border-color:#ef4444;background:#1c0607}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#34d399;padding:11px 14px;text-align:left;font-size:.9rem;border-bottom:2px solid #334155}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem;vertical-align:top}
+    td code{font-size:.83rem;background:#0f172a;padding:2px 6px;border-radius:4px;color:#6ee7b7}
+    .step{background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0;counter-increment:step}
+    .step-num{display:inline-block;background:#065f46;color:#a7f3d0;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-weight:700;font-size:.85rem;margin-right:10px}
+    .step h3{display:inline;color:#e2e8f0;font-size:1rem;margin:0}
+    .step-body{margin-top:12px;padding-left:38px}
+    .check{color:#10b981;font-weight:700}
+    .badge{display:inline-block;background:#064e3b;color:#34d399;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:600;margin:2px}
+    .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin:20px 0}
+    .tool-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px;text-align:center}
+    .tool-card .icon{font-size:2rem;margin-bottom:8px}
+    .tool-card .name{color:#f1f5f9;font-weight:600;font-size:.95rem}
+    .tool-card .ver{color:#34d399;font-size:.8rem;margin-top:4px}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:50px}
+  </style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+<header>
+  <h1>Instalare Mediu de Lucru</h1>
+  <p>Tot ce trebuie instalat înainte de a urma tutorialele — pas cu pas</p>
+</header>
+
+<div class="container">
+
+<h2>Ce vei instala</h2>
+<div class="tool-grid">
+  <div class="tool-card"><div class="icon">☕</div><div class="name">Java 21</div><div class="ver">Temurin (Eclipse)</div></div>
+  <div class="tool-card"><div class="icon">🔧</div><div class="name">Maven 3.9+</div><div class="ver">Build tool</div></div>
+  <div class="tool-card"><div class="icon">🟢</div><div class="name">Node.js 20+</div><div class="ver">+ npm</div></div>
+  <div class="tool-card"><div class="icon">🐳</div><div class="name">Docker Desktop</div><div class="ver">+ Docker Compose</div></div>
+  <div class="tool-card"><div class="icon">📝</div><div class="name">VS Code</div><div class="ver">+ extensii Java/Angular</div></div>
+  <div class="tool-card"><div class="icon">🌿</div><div class="name">Git</div><div class="ver">2.40+</div></div>
+</div>
+
+<div class="callout info">
+  <p><strong>Timp estimat:</strong> 30–45 minute pentru prima instalare completă. Dacă ai deja unele instalate, verifică versiunile — versiuni mai vechi pot cauza erori.</p>
+</div>
+
+<h2>1. Java 21 (Temurin)</h2>
+
+<div class="callout">
+  <p><strong>De ce Java 21?</strong> Spring Boot 3.x necesită minim Java 17. Java 21 este LTS (Long Term Support) și adaugă funcționalități moderne (records, sealed classes, virtual threads).</p>
+</div>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Descarcă Java 21 Temurin</h3>
+  <div class="step-body">
+    <p>Mergi la <strong>adoptium.net</strong> → secțiunea "Latest LTS" → selectează <strong>Java 21</strong> → <strong>Windows x64 MSI Installer</strong>.</p>
+    <p>Sau descarcă direct de la:<br/><code>https://adoptium.net/temurin/releases/?version=21&os=windows&arch=x64&package=jdk</code></p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Instalează cu opțiunile implicite</h3>
+  <div class="step-body">
+    <p>Rulează MSI-ul descărcat. La pasul "Custom Setup" bifează <strong>"Set JAVA_HOME variable"</strong> și <strong>"Add to PATH"</strong> dacă sunt disponibile.</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Verifică instalarea</h3>
+  <div class="step-body">
+    <p>Deschide un terminal nou (PowerShell sau CMD) și rulează:</p>
+    <pre><code>java -version</code></pre>
+    <p>Trebuie să vezi: <span class="check">✓</span> <code>openjdk version "21.x.x" ...</code></p>
+    <pre><code>echo $env:JAVA_HOME</code></pre>
+    <p>Trebuie să returneze calea către JDK (ex: <code>C:\Program Files\Eclipse Adoptium\jdk-21...</code>)</p>
+  </div>
+</div>
+
+<div class="callout warn">
+  <p><strong>Problemă frecventă:</strong> Dacă <code>java -version</code> arată o versiune veche, înseamnă că ai mai multe JDK instalate. Setează manual JAVA_HOME: <em>System Properties → Environment Variables → JAVA_HOME</em> → calea JDK 21.</p>
+</div>
+
+<h2>2. Maven 3.9+</h2>
+
+<div class="callout">
+  <p><strong>De ce Maven?</strong> Maven este build tool-ul care compilează codul Java, rulează testele și împachetează aplicația în JAR. Spring Boot folosește Maven (sau Gradle) pentru a gestiona dependențele.</p>
+</div>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Descarcă Maven</h3>
+  <div class="step-body">
+    <p>Mergi la <strong>maven.apache.org/download</strong> → descarcă <strong>apache-maven-3.9.x-bin.zip</strong></p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Extrage și configurează PATH</h3>
+  <div class="step-body">
+    <p>Extrage arhiva la o cale simplă, ex: <code>C:\tools\apache-maven-3.9.10\</code></p>
+    <p>Adaugă <code>C:\tools\apache-maven-3.9.10\bin</code> la variabila de sistem <strong>PATH</strong>:</p>
+    <p><em>Start → "Environment Variables" → System Variables → Path → Edit → New → calea\bin</em></p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Verifică instalarea</h3>
+  <div class="step-body">
+    <p>Deschide un terminal NOU (important — PATH se actualizează doar în terminale noi):</p>
+    <pre><code>mvn -version</code></pre>
+    <p>Trebuie să vezi: <span class="check">✓</span> <code>Apache Maven 3.9.x ... Java version: 21...</code></p>
+  </div>
+</div>
+
+<h2>3. Node.js 20+ și npm</h2>
+
+<div class="callout">
+  <p><strong>De ce Node.js?</strong> Angular CLI rulează pe Node.js. npm (Node Package Manager) instalează librăriile Angular (HttpClient, Router, Forms etc.).</p>
+</div>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Descarcă Node.js LTS</h3>
+  <div class="step-body">
+    <p>Mergi la <strong>nodejs.org</strong> → descarcă versiunea <strong>LTS</strong> (minim 20.x) → Windows Installer (.msi)</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Instalează cu setările implicite</h3>
+  <div class="step-body">
+    <p>Rulează installerul. Node.js se adaugă automat în PATH.</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Verifică și instalează Angular CLI</h3>
+  <div class="step-body">
+    <pre><code>node -v     # trebuie: v20.x.x sau mai nou
+npm -v      # trebuie: 10.x.x sau mai nou
+
+npm install -g @angular/cli@19</code></pre>
+    <p>Verifică Angular CLI:</p>
+    <pre><code>ng version</code></pre>
+    <p>Trebuie să vezi: <span class="check">✓</span> <code>Angular CLI: 19.x.x</code></p>
+  </div>
+</div>
+
+<h2>4. Docker Desktop</h2>
+
+<div class="callout">
+  <p><strong>De ce Docker?</strong> Proiectul folosește Docker Compose pentru a porni infrastructura: MySQL, Redis, RabbitMQ, Prometheus, Grafana. Fără Docker ar trebui instalate și configurate manual toate aceste servicii.</p>
+</div>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Descarcă Docker Desktop</h3>
+  <div class="step-body">
+    <p>Mergi la <strong>docker.com/products/docker-desktop</strong> → <strong>Download for Windows</strong></p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Instalează și activează WSL2</h3>
+  <div class="step-body">
+    <p>Rulează installerul. Dacă cere activarea WSL2 (Windows Subsystem for Linux), acceptă — Docker Desktop pe Windows îl necesită.</p>
+    <p>Repornește calculatorul după instalare.</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Verifică instalarea</h3>
+  <div class="step-body">
+    <p>Pornește Docker Desktop (iconița din system tray trebuie să fie verde/running).</p>
+    <pre><code>docker -v
+docker compose version</code></pre>
+    <p>Trebuie să vezi: <span class="check">✓</span> <code>Docker version 27.x.x</code> și <code>Docker Compose version v2.x.x</code></p>
+  </div>
+</div>
+
+<div class="callout warn">
+  <p><strong>Windows Home:</strong> Docker Desktop funcționează pe Windows Home cu WSL2. Asigură-te că virtualizarea este activată în BIOS (Hyper-V sau SVM).</p>
+</div>
+
+<h2>5. Visual Studio Code + Extensii</h2>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Descarcă VS Code</h3>
+  <div class="step-body">
+    <p>Mergi la <strong>code.visualstudio.com</strong> → Download for Windows</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Instalează extensiile necesare</h3>
+  <div class="step-body">
+    <p>Deschide VS Code → Ctrl+Shift+X (Extensions) → caută și instalează:</p>
+    <table>
+      <tr><th>Extensie</th><th>Publisher</th><th>De ce</th></tr>
+      <tr><td>Extension Pack for Java</td><td>Microsoft</td><td>Java, Maven, debugging</td></tr>
+      <tr><td>Spring Boot Extension Pack</td><td>VMware</td><td>Run/debug Spring Boot, application.yml autocomplete</td></tr>
+      <tr><td>Angular Language Service</td><td>Angular</td><td>Autocomplete în template-uri Angular</td></tr>
+      <tr><td>Docker</td><td>Microsoft</td><td>Vizualizare containere, logs</td></tr>
+      <tr><td>GitLens</td><td>GitKraken</td><td>Istoricul git inline</td></tr>
+      <tr><td>Thunder Client</td><td>Thunder Client</td><td>Test API (alternativă Postman în VS Code)</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Configurează Java în VS Code</h3>
+  <div class="step-body">
+    <p>Apasă <strong>Ctrl+Shift+P</strong> → scrie <strong>"Java: Configure Java Runtime"</strong> → verifică că apare JDK 21.</p>
+    <p>Dacă nu apare: Ctrl+Shift+P → <strong>"Java: Configure Java Runtime"</strong> → Add JDK → navighează la folderul JDK 21.</p>
+  </div>
+</div>
+
+<h2>6. Git</h2>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Descarcă și instalează Git</h3>
+  <div class="step-body">
+    <p>Mergi la <strong>git-scm.com/download/win</strong> → descarcă installerul 64-bit.</p>
+    <p>La instalare: la "Choosing the default editor used by Git" alege <strong>VS Code</strong>. Restul setărilor — implicit.</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Configurează identitatea</h3>
+  <div class="step-body">
+    <pre><code>git config --global user.name "Prenume Nume"
+git config --global user.email "email@example.com"</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Verifică instalarea</h3>
+  <div class="step-body">
+    <pre><code>git --version</code></pre>
+    <p>Trebuie să vezi: <span class="check">✓</span> <code>git version 2.x.x.windows.x</code></p>
+  </div>
+</div>
+
+<h2>7. Clonarea proiectului</h2>
+
+<div class="step">
+  <span class="step-num">1</span><h3>Clonează repository-ul</h3>
+  <div class="step-body">
+    <pre><code>git clone https://github.com/[username]/portal-admitere.git
+cd portal-admitere</code></pre>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">2</span><h3>Deschide în VS Code</h3>
+  <div class="step-body">
+    <pre><code>code .</code></pre>
+    <p>VS Code va detecta automat proiectele Java (Maven) și Angular.</p>
+  </div>
+</div>
+
+<div class="step">
+  <span class="step-num">3</span><h3>Pornește infrastructura Docker</h3>
+  <div class="step-body">
+    <p>Din folderul rădăcină al proiectului:</p>
+    <pre><code>docker compose up -d</code></pre>
+    <p>Prima dată descarcă imaginile — poate dura 3–5 minute. Verifică că toate containerele rulează:</p>
+    <pre><code>docker compose ps</code></pre>
+    <p>Trebuie să vezi toate containerele cu starea <span class="check">Up</span>: mysql, redis, rabbitmq, prometheus, grafana.</p>
+  </div>
+</div>
+
+<h2>Verificare finală — tot funcționează?</h2>
+
+<table>
+  <tr><th>Componentă</th><th>Comandă de verificare</th><th>Rezultat așteptat</th></tr>
+  <tr><td>Java 21</td><td><code>java -version</code></td><td>openjdk version "21.x.x"</td></tr>
+  <tr><td>Maven</td><td><code>mvn -version</code></td><td>Apache Maven 3.9.x, Java version: 21</td></tr>
+  <tr><td>Node.js</td><td><code>node -v</code></td><td>v20.x.x sau mai nou</td></tr>
+  <tr><td>npm</td><td><code>npm -v</code></td><td>10.x.x sau mai nou</td></tr>
+  <tr><td>Angular CLI</td><td><code>ng version</code></td><td>Angular CLI: 19.x.x</td></tr>
+  <tr><td>Docker</td><td><code>docker -v</code></td><td>Docker version 27.x.x</td></tr>
+  <tr><td>Docker Compose</td><td><code>docker compose version</code></td><td>Docker Compose version v2.x.x</td></tr>
+  <tr><td>Git</td><td><code>git --version</code></td><td>git version 2.x.x</td></tr>
+</table>
+
+<div class="callout">
+  <p><strong>Totul verde?</strong> Ești pregătit să urmezi tutorialele. Începe cu <a href="00-spring-boot-setup.html" style="color:#34d399">Tutorial 00 — Spring Boot Setup</a>.</p>
+</div>
+
+<h2>Structura proiectului portal-admitere</h2>
+<p>Proiectul este organizat ca o arhitectură de microservicii:</p>
+<pre><code>portal-admitere/
+├── config-server/        ← configurare centralizată (Spring Cloud Config)
+├── discovery-server/     ← registru servicii (Netflix Eureka)
+├── api-gateway/          ← punct de intrare unic (Spring Cloud Gateway)
+├── user-service/         ← autentificare, utilizatori, profil (port 8081)
+├── admissions-service/   ← admitere, dosare candidați
+├── dormitory-service/    ← cămin, locuri, cereri
+├── frontend/             ← aplicație Angular (port 4300)
+├── docker-compose.yml    ← infrastructura (MySQL, Redis, RabbitMQ, etc.)
+└── docs/tutorials/       ← tutorialele tehnice (ești aici)</code></pre>
+
+<h3>Ordinea de pornire a serviciilor</h3>
+<ol>
+  <li><strong>docker compose up -d</strong> — pornește infrastructura (MySQL, Redis, RabbitMQ, Prometheus, Grafana)</li>
+  <li><strong>config-server</strong> — primul serviciu Spring Boot (portul 8888)</li>
+  <li><strong>discovery-server</strong> — al doilea (portul 8761)</li>
+  <li><strong>user-service, admissions-service, dormitory-service</strong> — se pot porni simultan</li>
+  <li><strong>api-gateway</strong> — ultimul, după ce celelalte s-au înregistrat în Eureka</li>
+  <li><strong>ng serve</strong> — frontend Angular (portul 4300)</li>
+</ol>
+
+</div>
+<footer>Portal Admitere – Prerequisite: Instalare Mediu de Lucru &nbsp;|&nbsp; <a href="index.html" style="color:#34d399">Toate tutorialele</a></footer>
+</body>
+</html>

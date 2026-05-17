@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Documentație Proiect — Portal Admitere</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    .topbar-links{display:flex;gap:20px}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:56px 24px;text-align:center}
+    header h1{font-size:2.4rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.1rem}
+    header .meta{margin-top:20px;display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+    header .meta span{background:rgba(255,255,255,.1);padding:6px 16px;border-radius:20px;font-size:.85rem;color:#e0e7ff}
+    .toc{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px 28px;max-width:960px;margin:32px auto;columns:2;gap:40px}
+    .toc h3{color:#818cf8;font-size:1rem;margin-bottom:12px;column-span:all}
+    .toc a{display:block;color:#94a3b8;text-decoration:none;font-size:.88rem;padding:3px 0;border-bottom:1px solid #1e293b}
+    .toc a:hover{color:#818cf8}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#818cf8;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    h4{font-size:.95rem;color:#7dd3fc;margin:18px 0 6px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0;font-family:'Consolas','Fira Code',monospace;font-size:.82rem;color:#94a3b8}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.83rem;color:#7dd3fc}
+    .ic{background:#1e293b;padding:2px 7px;border-radius:4px;font-family:'Consolas',monospace;font-size:.82rem;color:#7dd3fc}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout.info{border-color:#38bdf8}
+    .callout p{margin:0;color:#cbd5e1;font-size:.92rem}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.88rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.87rem}
+    td code{color:#7dd3fc}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 16px;border-radius:8px;font-size:.85rem;font-weight:600;border:1px solid #4f46e5;text-align:center}
+    .step.gray{background:#1e293b;color:#94a3b8;border-color:#334155}
+    .step.green{background:#064e3b;color:#34d399;border-color:#10b981}
+    .arrow{color:#818cf8;font-size:1.3rem}
+    .service-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+    .service-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px}
+    .service-card h4{color:#a5b4fc;margin:0 0 8px 0;font-size:.95rem}
+    .service-card .port{color:#4f46e5;font-size:.8rem;font-weight:600;margin-bottom:8px}
+    .service-card p{color:#94a3b8;font-size:.85rem;margin:0}
+    .tag{display:inline-block;background:#312e81;color:#a5b4fc;font-size:.73rem;padding:2px 9px;border-radius:20px;margin:2px}
+    .tag.green{background:#064e3b;color:#34d399}
+    .tag.yellow{background:#78350f;color:#fbbf24}
+    .tag.red{background:#7f1d1d;color:#fca5a5}
+    .role-card{display:flex;gap:16px;margin:8px 0;background:#1e293b;border-radius:8px;padding:14px 18px;align-items:center}
+    .role-badge{background:#312e81;color:#a5b4fc;padding:6px 14px;border-radius:6px;font-size:.82rem;font-weight:700;white-space:nowrap}
+    .member{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .member-hdr{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+    .av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:#fff;flex-shrink:0}
+    .placeholder{background:#0f172a;border:2px dashed #334155;border-radius:8px;padding:16px;text-align:center;color:#475569;font-style:italic}
+    .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+    .stat{background:#1e293b;border-radius:8px;padding:16px;text-align:center;border:1px solid #334155}
+    .stat .n{font-size:1.8rem;font-weight:700;color:#4f46e5}
+    .stat .l{font-size:.78rem;color:#64748b;margin-top:4px}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:48px}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="tutorials/index.html">← Tutoriale tehnice</a>
+  <div class="topbar-links">
+    <a href="RAPORT_CERINTE.html">Raport Cerințe</a>
+    <a href="AI_AGENTS.html">AI Agents</a>
+  </div>
+</div>
+
+<header>
+  <h1>Portal Admitere</h1>
+  <p>Platformă web pentru gestionarea admiterii universitare și cazării studențești</p>
+  <div class="meta">
+    <span>🎓 Proiect licență AMSS</span>
+    <span>☕ Spring Boot 3.2.5 + Angular 21</span>
+    <span>🏗️ Arhitectură Microservicii</span>
+    <span>🚀 Live pe Railway + Vercel</span>
+  </div>
+</header>
+
+<div class="toc">
+  <h3>📋 Cuprins</h3>
+  <a href="#prezentare">1. Prezentare generală</a>
+  <a href="#arhitectura">2. Arhitectura sistemului</a>
+  <a href="#techstack">3. Tech Stack</a>
+  <a href="#microservicii">4. Microservicii</a>
+  <a href="#frontend">5. Frontend Angular 21</a>
+  <a href="#baze-de-date">6. Baze de date</a>
+  <a href="#securitate">7. Securitate</a>
+  <a href="#api">8. API REST</a>
+  <a href="#design-patterns">9. Design Patterns</a>
+  <a href="#testare">10. Testare & Coverage</a>
+  <a href="#monitorizare">11. Monitorizare</a>
+  <a href="#deployment">12. Deployment live</a>
+  <a href="#rulare-locala">13. Rulare locală</a>
+  <a href="#ai">14. AI Agents</a>
+  <a href="#contributii">15. Contribuții echipă</a>
+</div>
+
+<div class="container">
+
+  <!-- 1 -->
+  <h2 id="prezentare">1. Prezentare generală</h2>
+  <p>Portal Admitere este o platformă web destinată universităților pentru gestionarea completă a procesului de admitere și a cazării studențești în cămine. Aplicația permite candidaților să depună cereri de admitere online, secretariatului să gestioneze și să proceseze aceste cereri, iar administrației să configureze algoritmii de selecție și să monitorizeze întregul sistem.</p>
+
+  <div class="stat-row">
+    <div class="stat"><div class="n">4</div><div class="l">Microservicii</div></div>
+    <div class="stat"><div class="n">81%</div><div class="l">Code Coverage</div></div>
+    <div class="stat"><div class="n">90</div><div class="l">Teste automate</div></div>
+    <div class="stat"><div class="n">17</div><div class="l">Tutoriale tehnice</div></div>
+  </div>
+
+  <h3>Roluri utilizatori</h3>
+  <div class="role-card"><div class="role-badge">STUDENT</div><p style="color:#cbd5e1;margin:0">Profil personal, vizualizare anunțuri, depunere cerere admitere, cerere cazare cămin, chatbot AI</p></div>
+  <div class="role-card"><div class="role-badge" style="background:#064e3b;color:#34d399">SECRETARIAT</div><p style="color:#cbd5e1;margin:0">Gestionare cereri admitere, procesare dosare, generare contracte PDF, vizualizare candidați</p></div>
+  <div class="role-card"><div class="role-badge" style="background:#7f1d1d;color:#fca5a5">ADMIN</div><p style="color:#cbd5e1;margin:0">CRUD complet utilizatori, algoritm admitere, algoritm alocare cămin, monitorizare sistem, anunțuri</p></div>
+
+  <!-- 2 -->
+  <h2 id="arhitectura">2. Arhitectura sistemului</h2>
+  <p>Aplicația urmează o arhitectură de microservicii cu separare clară a responsabilităților. Toate cererile din frontend trec printr-un API Gateway central care aplică autentificarea și rate limiting-ul înainte de a ruta spre serviciile corespunzătoare.</p>
+
+  <div class="flow" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div class="step" style="text-align:center;background:#0c4a6e;border-color:#0284c7;color:#7dd3fc">Angular 21 — https://portal-admitere.vercel.app</div>
+    <div style="text-align:center;color:#818cf8">↕ HTTPS · JWT Bearer · XSRF-TOKEN</div>
+    <div class="step" style="text-align:center;background:#1e1b4b;border-color:#4f46e5;color:#a5b4fc">API Gateway :8080 — Routing · Rate Limiting · JWT Filter · Load Balancing</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px">
+      <div class="step" style="background:#172554;border-color:#1d4ed8;color:#93c5fd">User Service<br/><small>:8081 / :8083<br/>(2 instanțe)</small></div>
+      <div class="step" style="background:#14532d;border-color:#16a34a;color:#86efac">Admissions Service<br/><small>:8082</small></div>
+      <div class="step" style="background:#713f12;border-color:#d97706;color:#fcd34d">Dormitory Service<br/><small>:8084</small></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+      <div class="step gray" style="text-align:center">Discovery Server (Eureka) :8761</div>
+      <div class="step gray" style="text-align:center">Config Server :8888</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px">
+      <div class="step gray" style="font-size:.78rem;text-align:center">MySQL :3306</div>
+      <div class="step gray" style="font-size:.78rem;text-align:center">MongoDB :27017</div>
+      <div class="step gray" style="font-size:.78rem;text-align:center">Redis :6379</div>
+      <div class="step gray" style="font-size:.78rem;text-align:center">RabbitMQ :5672</div>
+    </div>
+  </div>
+
+  <div class="callout info" style="margin-top:20px">
+    <p><strong>Strangler Fig Pattern:</strong> Proiectul a migrat gradual dintr-o aplicație monolitică Spring MVC (aplicația <em>licenta</em>) în arhitectură de microservicii. Funcționalitățile au fost extrase și reimplementate progresiv, fără a opri sistemul existent.</p>
+  </div>
+
+  <!-- 3 -->
+  <h2 id="techstack">3. Tech Stack</h2>
+  <table>
+    <tr><th>Layer</th><th>Tehnologie</th><th>Versiune</th><th>Scop</th></tr>
+    <tr><td>Frontend</td><td>Angular</td><td>21</td><td>SPA cu standalone components, signals, @if/@for</td></tr>
+    <tr><td>Frontend</td><td>TypeScript + SCSS</td><td>5.x</td><td>Tipizare statică, stilizare componentă</td></tr>
+    <tr><td>API Gateway</td><td>Spring Cloud Gateway</td><td>2023.0.1</td><td>Routing, rate limiting, JWT filter</td></tr>
+    <tr><td>Backend</td><td>Spring Boot</td><td>3.2.5</td><td>Microservicii REST, Java 21 Virtual Threads</td></tr>
+    <tr><td>Securitate</td><td>Spring Security 6 + jjwt</td><td>0.12.5</td><td>JWT auth, CSRF, BCrypt, roluri</td></tr>
+    <tr><td>Persistență</td><td>MySQL 8.0 + JPA/Hibernate</td><td>8.0</td><td>Date relaționale principale</td></tr>
+    <tr><td>NoSQL</td><td>MongoDB</td><td>7</td><td>Audit log (acțiuni utilizatori)</td></tr>
+    <tr><td>Caching</td><td>Redis</td><td>7</td><td>@Cacheable, TTL 10 min, rate limiting</td></tr>
+    <tr><td>Mesagerie</td><td>RabbitMQ</td><td>3</td><td>Evenimente asincrone admitere</td></tr>
+    <tr><td>Service Discovery</td><td>Netflix Eureka</td><td>4.x</td><td>Registru servicii, auto-descoperire</td></tr>
+    <tr><td>Config</td><td>Spring Cloud Config</td><td>4.x</td><td>Configurare centralizată, @RefreshScope</td></tr>
+    <tr><td>Resilience</td><td>Resilience4j</td><td>2.x</td><td>Circuit Breaker, Retry, Fallback</td></tr>
+    <tr><td>Monitorizare</td><td>Prometheus + Grafana</td><td>latest</td><td>Metrici sistem, dashboarduri</td></tr>
+    <tr><td>Testare</td><td>JUnit 5 + Mockito + JaCoCo</td><td>5.x</td><td>Unit + integration tests, coverage 81%</td></tr>
+    <tr><td>Documentație API</td><td>SpringDoc OpenAPI</td><td>2.x</td><td>Swagger UI auto-generat</td></tr>
+    <tr><td>AI Chatbot</td><td>Groq API (Llama 3.1 8B)</td><td>instant</td><td>Asistent virtual RoboAdmis</td></tr>
+    <tr><td>CI/CD</td><td>GitHub Actions</td><td>-</td><td>Build + teste + deployment automat</td></tr>
+    <tr><td>Deployment</td><td>Railway + Vercel</td><td>-</td><td>Cloud hosting backend + frontend</td></tr>
+  </table>
+
+  <!-- 4 -->
+  <h2 id="microservicii">4. Microservicii</h2>
+
+  <div class="service-grid">
+    <div class="service-card">
+      <h4>🔍 Discovery Server</h4>
+      <div class="port">:8761</div>
+      <p>Netflix Eureka Server — registru central pentru toate microserviciile. Fiecare serviciu se înregistrează la pornire și se poate descoperi reciproc prin nume logic (ex: <code>lb://user-service</code>). Dashboard vizual la <code>/eureka/web</code>.</p>
+    </div>
+    <div class="service-card">
+      <h4>⚙️ Config Server</h4>
+      <div class="port">:8888</div>
+      <p>Spring Cloud Config Server — servește configurații centralizate pentru toate microserviciile. JWT secret-ul și credențialele bazelor de date sunt externalizate aici, nu hardcodate în servicii. Suportă <code>@RefreshScope</code> pentru reîncărcare fără restart.</p>
+    </div>
+    <div class="service-card">
+      <h4>🚪 API Gateway</h4>
+      <div class="port">:8080</div>
+      <p>Spring Cloud Gateway — punct unic de intrare. Aplică JWT filter, rate limiting cu Redis, load balancing round-robin între instanțele user-service, și <code>LoggingFilter</code> pentru audit. Rutele sunt configurate prin <code>application.yml</code>.</p>
+    </div>
+    <div class="service-card">
+      <h4>👤 User Service</h4>
+      <div class="port">:8081 / :8083 (2 instanțe)</div>
+      <p>Serviciul principal — autentificare JWT, gestionare utilizatori și profiluri, anunțuri cu taguri, audit log MongoDB, chatbot AI. Expune Swagger UI la <code>/swagger-ui.html</code> și metrici JaCoCo la <code>/coverage</code>.</p>
+    </div>
+    <div class="service-card">
+      <h4>🎓 Admissions Service</h4>
+      <div class="port">:8082</div>
+      <p>Gestionarea procesului de admitere — cereri candidați, algoritm de selecție bazat pe medie bacalaureat, generare contracte PDF, comunicare prin RabbitMQ. Implementat de Rareș.</p>
+    </div>
+    <div class="service-card">
+      <h4>🏠 Dormitory Service</h4>
+      <div class="port">:8084</div>
+      <p>Gestionarea cazării în cămine — cereri cazare, algoritm alocare locuri bazat pe medie și distanță, administrare camere și paturi. Implementat de Dragoș.</p>
+    </div>
+  </div>
+
+  <h3>Comunicare inter-servicii</h3>
+  <table>
+    <tr><th>Tip</th><th>Tehnologie</th><th>Utilizare</th></tr>
+    <tr><td>REST sincron</td><td>Feign Client</td><td>User Service → Admissions Service, User Service → Dormitory Service</td></tr>
+    <tr><td>Async (events)</td><td>RabbitMQ</td><td>User Service publică eveniment admitere → Admissions Service consumă</td></tr>
+    <tr><td>Resilience</td><td>Resilience4j</td><td>Circuit Breaker + Retry pe toate apelurile Feign</td></tr>
+  </table>
+
+  <!-- 5 -->
+  <h2 id="frontend">5. Frontend Angular 21</h2>
+  <p>Frontend-ul este o Single Page Application construită cu Angular 21 standalone components, fără NgModules. Folosește signals pentru state management reactiv și sintaxa modernă <span class="ic">@if</span> / <span class="ic">@for</span> în template-uri.</p>
+
+  <h3>Structura aplicației</h3>
+  <pre>frontend/src/app/
+├── core/
+│   ├── services/          — AuthService, UserService, AnnouncementService,
+│   │                        ProfileService, ChatService
+│   ├── models/            — Interfețe TypeScript: User, Announcement, Page&lt;T&gt;
+│   ├── guards/            — AuthGuard, RoleGuard
+│   └── interceptors/      — jwtInterceptor (adaugă Authorization header)
+├── features/
+│   ├── auth/              — Login, Register (split-screen animat)
+│   ├── dashboard/
+│   │   ├── users/         — CRUD utilizatori cu paginare, sortare, filtrare
+│   │   ├── announcements/ — CRUD anunțuri cu taguri și search debounced
+│   │   └── profile/       — Profil personal, schimbare parolă
+│   └── errors/            — Pagini 404, 401 Access Denied
+└── shared/
+    ├── chatbot/            — Widget flotant RoboAdmis 🤖
+    └── navbar/             — Navigare cu role badge</pre>
+
+  <h3>Funcționalități cheie Angular</h3>
+  <table>
+    <tr><th>Funcționalitate</th><th>Implementare</th></tr>
+    <tr><td>Autentificare JWT</td><td><code>jwtInterceptor</code> — adaugă <code>Authorization: Bearer ...</code> la toate requesturile HTTP</td></tr>
+    <tr><td>Protecție rute</td><td><code>AuthGuard</code> (verifică login) + <code>RoleGuard</code> (verifică rolul)</td></tr>
+    <tr><td>Lazy loading</td><td>Fiecare feature este un route separat încărcat la navigare</td></tr>
+    <tr><td>Paginare server-side</td><td><code>Page&lt;T&gt;</code> model + <code>HttpParams</code> cu page/size/sort</td></tr>
+    <tr><td>Search debounced</td><td>RxJS <code>Subject</code> + <code>debounceTime(300ms)</code> — nu face request la fiecare literă</td></tr>
+    <tr><td>Remember Me</td><td>Checkbox login → JWT stocat în <code>localStorage</code> (persistent) sau <code>sessionStorage</code></td></tr>
+    <tr><td>Environment config</td><td><code>environment.ts</code> cu <code>apiUrl</code> — toate serviciile Angular folosesc această valoare</td></tr>
+  </table>
+
+  <!-- 6 -->
+  <h2 id="baze-de-date">6. Baze de date</h2>
+
+  <h3>MySQL — Schema principală (user-service)</h3>
+  <pre>users (id PK, username, email, password, role ENUM, enabled, created_at, updated_at)
+  │ @OneToOne
+  └── user_profiles (id PK, user_id FK, first_name, last_name, cnp, date_of_birth, phone)
+  │ @OneToMany
+  └── refresh_tokens (id PK, token, user_id FK, expiry_date, revoked, device_info)
+  │ @OneToMany
+  └── announcements (id PK, title, content, created_by FK, created_at, enabled)
+                         │ @ManyToMany
+                         └── tags (id PK, name VARCHAR)
+                               [tabel pivot: announcement_tags]</pre>
+
+  <h3>MongoDB — Audit Log</h3>
+  <table>
+    <tr><th>Câmp</th><th>Tip</th><th>Descriere</th></tr>
+    <tr><td><code>_id</code></td><td>ObjectId</td><td>Identificator document MongoDB</td></tr>
+    <tr><td><code>userId</code></td><td>Long</td><td>ID utilizator din MySQL</td></tr>
+    <tr><td><code>action</code></td><td>String</td><td>Tip acțiune (LOGIN, UPDATE_PROFILE, etc.)</td></tr>
+    <tr><td><code>details</code></td><td>String</td><td>Detalii contextuale ale acțiunii</td></tr>
+    <tr><td><code>timestamp</code></td><td>LocalDateTime</td><td>Momentul exact al acțiunii</td></tr>
+  </table>
+
+  <h3>Redis — Caching</h3>
+  <p>Redis este folosit în două scopuri: <strong>caching date</strong> cu <span class="ic">@Cacheable</span> (TTL 10 minute) pe endpoint-urile frecvent accesate, și <strong>rate limiting</strong> în API Gateway prin <span class="ic">RequestRateLimiter</span> filter.</p>
+
+  <!-- 7 -->
+  <h2 id="securitate">7. Securitate</h2>
+
+  <h3>Flux autentificare JWT</h3>
+  <div class="flow">
+    <div class="step">POST /auth/login</div>
+    <div class="arrow">→</div>
+    <div class="step">Validare BCrypt</div>
+    <div class="arrow">→</div>
+    <div class="step">Generare Access Token (15min)</div>
+    <div class="arrow">+</div>
+    <div class="step">Refresh Token (7 zile)</div>
+    <div class="arrow">→</div>
+    <div class="step green">Stocat în localStorage / sessionStorage</div>
+  </div>
+
+  <div class="flow">
+    <div class="step">Request cu JWT</div>
+    <div class="arrow">→</div>
+    <div class="step">JwtAuthenticationFilter</div>
+    <div class="arrow">→</div>
+    <div class="step">Validare semnătură + expirare</div>
+    <div class="arrow">→</div>
+    <div class="step">SecurityContext populated</div>
+    <div class="arrow">→</div>
+    <div class="step green">@PreAuthorize verificat</div>
+  </div>
+
+  <h3>Configurare Spring Security</h3>
+  <table>
+    <tr><th>Funcționalitate</th><th>Implementare</th></tr>
+    <tr><td>Password encoding</td><td>BCryptPasswordEncoder (strength 10)</td></tr>
+    <tr><td>Token JWT</td><td>jjwt 0.12.5 — HMAC-SHA256, secret din Config Server</td></tr>
+    <tr><td>Refresh Token</td><td>Stocat în MySQL, invalidat la logout sau expirare</td></tr>
+    <tr><td>Autorizare endpoint-uri</td><td><code>@PreAuthorize("hasRole('ADMIN')")</code> pe metodele service/controller</td></tr>
+    <tr><td>CSRF</td><td>CookieCsrfTokenRepository — cookie XSRF-TOKEN lizibil de JavaScript</td></tr>
+    <tr><td>CORS</td><td>CorsConfigurationSource bean — origini configurabile prin <code>${ALLOWED_ORIGINS}</code></td></tr>
+    <tr><td>Session</td><td>STATELESS — fără sesiuni server-side, doar JWT</td></tr>
+  </table>
+
+  <div class="callout warn">
+    <p><strong>CSRF în producție:</strong> În deployment cross-origin (Vercel ↔ Railway), cookie-ul XSRF-TOKEN nu traversează domenii diferite din cauza politicii SameSite a browserelor. Deoarece autentificarea se face exclusiv prin header <code>Authorization: Bearer</code> (nu cookie), CSRF nu e necesar cu JWT stateless — protecția este ignorată în producție prin <code>ignoringRequestMatchers("/**")</code>, dar infrastructura rămâne în cod.</p>
+  </div>
+
+  <!-- 8 -->
+  <h2 id="api">8. API REST</h2>
+
+  <h3>Autentificare</h3>
+  <table>
+    <tr><th>Metodă</th><th>Endpoint</th><th>Acces</th><th>Descriere</th></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/auth/login</code></td><td>Public</td><td>Login cu username + password</td></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/auth/register</code></td><td>Public</td><td>Înregistrare cont nou (rol STUDENT)</td></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/auth/refresh</code></td><td>Public</td><td>Reînnoire access token cu refresh token</td></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/auth/logout</code></td><td>Autentificat</td><td>Invalidare refresh token</td></tr>
+  </table>
+
+  <h3>Utilizatori</h3>
+  <table>
+    <tr><th>Metodă</th><th>Endpoint</th><th>Rol minim</th><th>Descriere</th></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/api/users</code></td><td>ADMIN</td><td>Listă paginată cu filtrare și sortare</td></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/api/users/me</code></td><td>STUDENT</td><td>Datele utilizatorului curent</td></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/api/users</code></td><td>ADMIN</td><td>Creare utilizator nou</td></tr>
+    <tr><td><span class="tag yellow">PUT</span></td><td><code>/api/users/{id}</code></td><td>ADMIN</td><td>Actualizare utilizator</td></tr>
+    <tr><td><span class="tag yellow">PUT</span></td><td><code>/api/users/{id}/role</code></td><td>ADMIN</td><td>Schimbare rol utilizator</td></tr>
+    <tr><td><span class="tag red">DELETE</span></td><td><code>/api/users/{id}</code></td><td>ADMIN</td><td>Ștergere utilizator</td></tr>
+    <tr><td><span class="tag yellow">PUT</span></td><td><code>/api/users/me/password</code></td><td>STUDENT</td><td>Schimbare parolă proprie</td></tr>
+  </table>
+
+  <h3>Profil</h3>
+  <table>
+    <tr><th>Metodă</th><th>Endpoint</th><th>Rol</th><th>Descriere</th></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/api/profile</code></td><td>STUDENT</td><td>Profilul detaliat al utilizatorului curent</td></tr>
+    <tr><td><span class="tag yellow">PUT</span></td><td><code>/api/profile</code></td><td>STUDENT</td><td>Actualizare profil (nume, CNP, telefon)</td></tr>
+  </table>
+
+  <h3>Anunțuri</h3>
+  <table>
+    <tr><th>Metodă</th><th>Endpoint</th><th>Rol</th><th>Descriere</th></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/api/announcements</code></td><td>STUDENT</td><td>Listă paginată cu filtrare după tag și search</td></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/api/announcements</code></td><td>ADMIN</td><td>Creare anunț nou cu taguri</td></tr>
+    <tr><td><span class="tag yellow">PUT</span></td><td><code>/api/announcements/{id}</code></td><td>ADMIN</td><td>Editare anunț</td></tr>
+    <tr><td><span class="tag red">DELETE</span></td><td><code>/api/announcements/{id}</code></td><td>ADMIN</td><td>Ștergere anunț</td></tr>
+  </table>
+
+  <h3>AI Chatbot & altele</h3>
+  <table>
+    <tr><th>Metodă</th><th>Endpoint</th><th>Rol</th><th>Descriere</th></tr>
+    <tr><td><span class="tag green">POST</span></td><td><code>/api/chat/ask</code></td><td>STUDENT</td><td>Întrebare către RoboAdmis (Groq API)</td></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/actuator/health</code></td><td>Public</td><td>Health check serviciu</td></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/swagger-ui.html</code></td><td>Public</td><td>Documentație API interactivă</td></tr>
+    <tr><td><span class="tag">GET</span></td><td><code>/coverage/index.html</code></td><td>Public</td><td>Raport JaCoCo coverage</td></tr>
+  </table>
+
+  <!-- 9 -->
+  <h2 id="design-patterns">9. Design Patterns</h2>
+  <table>
+    <tr><th>Pattern</th><th>Unde este aplicat</th></tr>
+    <tr><td><strong>Strangler Fig</strong></td><td>Migrare graduală din aplicația monolitică în microservicii — funcționalitățile sunt înlocuite progresiv fără a opri sistemul existent</td></tr>
+    <tr><td><strong>Repository</strong></td><td>Fiecare entitate JPA are propriul repository (<code>UserRepository</code>, <code>AnnouncementRepository</code>) care izolează accesul la date față de logica de business</td></tr>
+    <tr><td><strong>Circuit Breaker</strong></td><td>Resilience4j protejează user-service când admissions-service sau dormitory-service sunt indisponibile — cererile eșuate deschid circuitul și activează fallback-ul</td></tr>
+    <tr><td><strong>Strategy</strong></td><td>Algoritmul de admitere și cel de alocare cămin sunt strategii interschimbabile de ranking — formula de scor poate fi înlocuită fără a modifica controlerul</td></tr>
+    <tr><td><strong>API Gateway</strong></td><td>Punct unic de intrare care aplică autentificare JWT, rate limiting și load balancing înainte de a ruta cererile</td></tr>
+    <tr><td><strong>Fallback</strong></td><td><code>AdmissionsClientFallback</code> și <code>DormitoryClientFallback</code> oferă răspunsuri degradate elegant când serviciile dependente nu răspund</td></tr>
+  </table>
+
+  <!-- 10 -->
+  <h2 id="testare">10. Testare & Coverage</h2>
+
+  <div class="stat-row">
+    <div class="stat"><div class="n">81%</div><div class="l">Instruction coverage</div></div>
+    <div class="stat"><div class="n">90</div><div class="l">Teste JUnit 5</div></div>
+    <div class="stat"><div class="n">~70%</div><div class="l">Branch coverage</div></div>
+    <div class="stat"><div class="n">~88%</div><div class="l">Method coverage</div></div>
+  </div>
+
+  <h3>Strategia de testare</h3>
+  <table>
+    <tr><th>Tip test</th><th>Tehnologie</th><th>Scop</th></tr>
+    <tr><td>Unit tests</td><td>JUnit 5 + Mockito</td><td>Testare service layer în izolare cu mock-uri pentru repository</td></tr>
+    <tr><td>Integration tests</td><td>@SpringBootTest + MockMvc</td><td>Testare endpoint-uri complete cu H2 in-memory</td></tr>
+    <tr><td>Security tests</td><td>Spring Security Test</td><td>Testare autorizare cu <code>@WithMockUser</code> și <code>.with(csrf())</code></td></tr>
+    <tr><td>Coverage</td><td>JaCoCo Maven Plugin</td><td>Raport HTML la <code>/coverage/index.html</code></td></tr>
+  </table>
+
+  <div class="callout ok">
+    <p><strong>Test database:</strong> Toate testele de integrare rulează pe H2 in-memory configurat în <code>application-test.yml</code>. Testele nu afectează și nu necesită baza de date MySQL de development.</p>
+  </div>
+
+  <!-- 11 -->
+  <h2 id="monitorizare">11. Monitorizare</h2>
+  <p>Sistemul expune metrici prin Spring Boot Actuator + Micrometer, colectate de Prometheus și vizualizate în Grafana.</p>
+
+  <table>
+    <tr><th>Componentă</th><th>Port</th><th>Funcție</th></tr>
+    <tr><td>Spring Boot Actuator</td><td>:8081/actuator</td><td>Expune metrici, health, info în format Prometheus</td></tr>
+    <tr><td>Prometheus</td><td>:9090</td><td>Colectare și stocare metrici (scrape la 15 secunde)</td></tr>
+    <tr><td>Grafana</td><td>:3000</td><td>Dashboard vizual — CPU, heap JVM, HTTP requests, response time</td></tr>
+  </table>
+
+  <p>Grafana este configurat cu <strong>auto-provisioning</strong> — la pornirea containerului Docker, datasource-ul Prometheus și dashboard-ul JSON sunt încărcate automat, fără configurare manuală.</p>
+
+  <!-- 12 -->
+  <h2 id="deployment">12. Deployment live</h2>
+
+  <table>
+    <tr><th>Serviciu</th><th>Platformă</th><th>URL</th></tr>
+    <tr><td>Frontend Angular</td><td>Vercel</td><td><code>https://portal-admitere.vercel.app</code></td></tr>
+    <tr><td>user-service</td><td>Railway</td><td><code>https://portal-admitere-production.up.railway.app</code></td></tr>
+    <tr><td>Swagger UI</td><td>Railway</td><td><code>https://portal-admitere-production.up.railway.app/swagger-ui.html</code></td></tr>
+    <tr><td>Health check</td><td>Railway</td><td><code>https://portal-admitere-production.up.railway.app/actuator/health</code></td></tr>
+  </table>
+
+  <h3>CI/CD — GitHub Actions</h3>
+  <div class="flow">
+    <div class="step">Push pe main / dev</div>
+    <div class="arrow">→</div>
+    <div class="step">GitHub Actions trigger</div>
+    <div class="arrow">→</div>
+    <div class="step">mvn test (JUnit + JaCoCo)</div>
+    <div class="arrow">→</div>
+    <div class="step">Build JAR</div>
+    <div class="arrow">→</div>
+    <div class="step green">Railway auto-deploy</div>
+  </div>
+
+  <div class="callout info">
+    <p><strong>Branch strategy:</strong> Development pe branch <code>dev</code>, merge cu <code>--no-ff</code> în <code>main</code> la release. Push pe <code>main</code> declanșează auto-deploy pe Railway (backend) și Vercel (frontend).</p>
+  </div>
+
+  <!-- 13 -->
+  <h2 id="rulare-locala">13. Rulare locală</h2>
+
+  <h3>Prerequisite</h3>
+  <p>Java 21, Maven 3.9+, Node.js 20+, Angular CLI 21, Docker Desktop</p>
+
+  <h3>Pasul 1 — Infrastructură</h3>
+  <pre>docker compose up -d
+# Pornește: MySQL :3306, MongoDB :27017, Redis :6379, RabbitMQ :5672, Prometheus :9090, Grafana :3000</pre>
+
+  <h3>Pasul 2 — Servicii (în ordine)</h3>
+  <pre>cd discovery-server  && mvn spring-boot:run   # Eureka :8761
+cd config-server     && mvn spring-boot:run   # Config :8888
+cd user-service      && mvn spring-boot:run   # User :8081
+cd api-gateway       && mvn spring-boot:run   # Gateway :8080
+# Opțional — admissions și dormitory:
+cd admissions-service && mvn spring-boot:run  # :8082
+cd dormitory-service  && mvn spring-boot:run  # :8084</pre>
+
+  <h3>Pasul 3 — Frontend</h3>
+  <pre>cd frontend && npm install && ng serve
+# Aplicația: http://localhost:4300</pre>
+
+  <h3>Pasul 4 — Demo Load Balancing (opțional)</h3>
+  <pre>.\start-second-instance.ps1
+# Pornește instanța 2 pe :8083, auto-download Maven dacă lipsește din PATH
+# Eureka afișează: USER-SERVICE UP(2) localhost:8081, localhost:8083
+# Header X-Instance-Port alternează între 8081 și 8083</pre>
+
+  <h3>URL-uri utile local</h3>
+  <table>
+    <tr><th>Serviciu</th><th>URL</th></tr>
+    <tr><td>Aplicație web</td><td>http://localhost:4300</td></tr>
+    <tr><td>Eureka Dashboard</td><td>http://localhost:8761</td></tr>
+    <tr><td>Swagger UI</td><td>http://localhost:8081/swagger-ui.html</td></tr>
+    <tr><td>Grafana</td><td>http://localhost:3000 (admin/admin)</td></tr>
+    <tr><td>Prometheus</td><td>http://localhost:9090</td></tr>
+    <tr><td>RabbitMQ Management</td><td>http://localhost:15672 (guest/guest)</td></tr>
+    <tr><td>JaCoCo Coverage</td><td>http://localhost:8081/coverage/index.html</td></tr>
+  </table>
+
+  <!-- 14 -->
+  <h2 id="ai">14. AI Agents</h2>
+
+  <h3>Cerința 12 — AI în Dezvoltare</h3>
+  <p>Pe parcursul proiectului a fost folosit <strong>Claude Code</strong> (Anthropic) ca instrument de pair programming integrat în VS Code. A contribuit la generare de cod, debugging, configurări complexe și generarea celor 17 tutoriale HTML din <span class="ic">docs/tutorials/</span>. Documentație completă în <a href="AI_AGENTS.html" style="color:#818cf8">AI_AGENTS.html</a>.</p>
+
+  <h3>Cerința 13 — AI Runtime: RoboAdmis 🤖</h3>
+  <p>Chatbot integrat funcțional în aplicație — widget flotant disponibil pe orice pagină după autentificare. Folosește <strong>Groq API</strong> cu modelul <span class="ic">llama-3.1-8b-instant</span> pentru răspunsuri în ~200ms despre procesul de admitere.</p>
+  <div class="flow">
+    <div class="step">Widget Angular</div>
+    <div class="arrow">→</div>
+    <div class="step">POST /api/chat/ask (JWT)</div>
+    <div class="arrow">→</div>
+    <div class="step">ClaudeService.java</div>
+    <div class="arrow">→</div>
+    <div class="step">Groq API</div>
+    <div class="arrow">→</div>
+    <div class="step green">Răspuns ~200ms</div>
+  </div>
+
+  <!-- 15 -->
+  <h2 id="contributii">15. Contribuții echipă</h2>
+
+  <div class="member">
+    <div class="member-hdr">
+      <div class="av" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">C</div>
+      <div><div style="font-size:1rem;font-weight:700;color:#f1f5f9">Cătălin Prundaru</div><div style="font-size:.85rem;color:#64748b">user-service · Frontend Angular · DevOps</div></div>
+    </div>
+    <p style="color:#cbd5e1;font-size:.9rem">Arhitectura generală a sistemului, user-service complet (autentificare JWT, CRUD utilizatori, anunțuri, audit MongoDB, chatbot AI), frontend Angular 21 (toate paginile, guards, interceptors, widget RoboAdmis), API Gateway, Config Server, Discovery Server, deployment Railway + Vercel, CI/CD GitHub Actions, 17 tutoriale tehnice, documentație proiect.</p>
+    <div style="margin-top:10px">
+      <span class="tag">user-service</span>
+      <span class="tag">Angular 21</span>
+      <span class="tag">API Gateway</span>
+      <span class="tag">Railway + Vercel</span>
+      <span class="tag">CI/CD</span>
+      <span class="tag">Documentație</span>
+    </div>
+  </div>
+
+  <div class="member">
+    <div class="member-hdr">
+      <div class="av" style="background:linear-gradient(135deg,#059669,#0d9488)">R</div>
+      <div><div style="font-size:1rem;font-weight:700;color:#f1f5f9">Rareș ___</div><div style="font-size:.85rem;color:#64748b">admissions-service</div></div>
+    </div>
+    <div class="placeholder">Secțiune de completat de Rareș</div>
+  </div>
+
+  <div class="member">
+    <div class="member-hdr">
+      <div class="av" style="background:linear-gradient(135deg,#dc2626,#ea580c)">D</div>
+      <div><div style="font-size:1rem;font-weight:700;color:#f1f5f9">Dragoș ___</div><div style="font-size:.85rem;color:#64748b">dormitory-service</div></div>
+    </div>
+    <div class="placeholder">Secțiune de completat de Dragoș</div>
+  </div>
+
+</div>
+
+<footer>Portal Admitere &copy; 2026 &nbsp;·&nbsp; Proiect licență AMSS &nbsp;·&nbsp; Universitatea Petrol-Gaze Ploiești</footer>
+
+</body>
+</html>

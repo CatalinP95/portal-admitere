@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JWT Interceptor, AuthGuard, Dashboard – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e1b4b,#4f46e5);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#c7d2fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#818cf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#a5b4fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #818cf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.ok{border-color:#10b981}
+    .callout.warn{border-color:#f59e0b}
+    .callout.err{border-color:#ef4444}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#818cf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#a5b4fc;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #4f46e5}
+    .step.gray{background:#1e293b;color:#94a3b8;border-color:#334155}
+    .arrow{color:#818cf8;font-size:1.4rem}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#818cf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #4f46e5;margin-bottom:0;line-height:1.65}
+    .checklist{list-style:none;margin:16px 0}
+    .checklist li{padding:8px 0;color:#cbd5e1;border-bottom:1px solid #1e293b;font-size:.92rem}
+    .checklist li::before{content:'✓ ';color:#10b981;font-weight:700}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>JWT Interceptor, AuthGuard, Dashboard & Error Pages</h1>
+    <p>Protejarea rutelor, injectarea automată a token-ului, pagini de eroare custom</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Fluxul complet de autentificare</h2>
+    <p>Ziua 14 adaugă stratul de securitate pe partea de frontend: orice request HTTP primește automat token-ul JWT, iar rutele protejate sunt blocate dacă utilizatorul nu e autentificat.</p>
+
+    <div class="flow">
+      <div class="step">User navighează</div>
+      <div class="arrow">→</div>
+      <div class="step">AuthGuard verifică</div>
+      <div class="arrow">→</div>
+      <div class="step">Component încarcă</div>
+      <div class="arrow">→</div>
+      <div class="step">HTTP Request</div>
+      <div class="arrow">→</div>
+      <div class="step">JwtInterceptor adaugă token</div>
+      <div class="arrow">→</div>
+      <div class="step">API Gateway</div>
+    </div>
+
+    <h2>JwtInterceptor – Functional Interceptor</h2>
+    <p>Angular 17+ folosește <strong>functional interceptors</strong> în loc de clase. Se înregistrează în <code>app.config.ts</code> prin <code>withInterceptors([jwtInterceptor])</code>.</p>
+
+    <pre><code><span class="keyword">export const</span> jwtInterceptor: <span class="type">HttpInterceptorFn</span> = (req, next) =&gt; {
+  <span class="keyword">const</span> auth   = inject(<span class="type">AuthService</span>);
+  <span class="keyword">const</span> router = inject(<span class="type">Router</span>);
+  <span class="keyword">const</span> token  = auth.getToken();
+
+  <span class="keyword">const</span> authReq = token
+    ? req.clone({ setHeaders: { Authorization: <span class="string">`Bearer ${token}`</span> } })
+    : req;
+
+  <span class="keyword">return</span> next(authReq).pipe(
+    catchError((err: <span class="type">HttpErrorResponse</span>) =&gt; {
+      <span class="keyword">const</span> isAuthEndpoint = req.url.includes(<span class="string">'/auth/'</span>);
+      <span class="keyword">if</span> (err.status === <span class="keyword">401</span> &amp;&amp; !isAuthEndpoint) {
+        auth.clearTokens();        <span class="comment">// curăță local, fără request suplimentar</span>
+        router.navigate([<span class="string">'/login'</span>]);
+      }
+      <span class="keyword">return</span> throwError(() =&gt; err);
+    })
+  );
+};</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Regulă critică — excluderea rutelor /auth/:</strong> Interceptorul NU trebuie să trateze 401-ul de pe <code>/auth/login</code> ca sesiune expirată. Un 401 la login înseamnă credențiale greșite, nu token invalid. Fără excludere, interceptorul ar apela <code>clearTokens()</code> + redirect la /login pe fiecare parolă greșită, creând o buclă.</p>
+    </div>
+
+    <div class="callout warn">
+      <p><strong>Nu apela auth.logout() din interceptor:</strong> <code>logout()</code> face un request HTTP către <code>/auth/logout</code>. Dacă token-ul e deja invalid, acel request poate eșua cu 401 sau 500 — creând un lanț de requesturi eșuate. Soluție: curăță tokenurile local cu <code>clearTokens()</code> (sincron, fără request) și redirecționează direct.</p>
+    </div>
+
+    <h2>AuthGuard – CanActivateFn</h2>
+    <p>Guard-ul verifică dacă există un token valid înainte de a permite accesul la o rută. Dacă nu există token, redirecționează la <code>/login</code>.</p>
+
+    <pre><code><span class="keyword">export const</span> authGuard: <span class="type">CanActivateFn</span> = () =&gt; {
+  <span class="keyword">const</span> auth   = inject(<span class="type">AuthService</span>);
+  <span class="keyword">const</span> router = inject(<span class="type">Router</span>);
+
+  <span class="keyword">if</span> (auth.isLoggedIn()) <span class="keyword">return true</span>;
+
+  router.navigate([<span class="string">'/login'</span>]);
+  <span class="keyword">return false</span>;
+};</code></pre>
+
+    <h2>RoleGuard – Protejare pe bază de rol</h2>
+    <p>RoleGuard citește rolurile permise din <code>route.data['roles']</code> și verifică dacă rolul utilizatorului e inclus.</p>
+
+    <pre><code><span class="keyword">export const</span> roleGuard: <span class="type">CanActivateFn</span> = (route: <span class="type">ActivatedRouteSnapshot</span>) =&gt; {
+  <span class="keyword">const</span> requiredRoles: <span class="keyword">string</span>[] = route.data[<span class="string">'roles'</span>] ?? [];
+  <span class="keyword">const</span> userRole = auth.getUserRole();
+
+  <span class="keyword">if</span> (requiredRoles.length === <span class="keyword">0</span> || requiredRoles.includes(userRole ?? <span class="string">''</span>)) {
+    <span class="keyword">return true</span>;
+  }
+  router.navigate([<span class="string">'/unauthorized'</span>]);
+  <span class="keyword">return false</span>;
+};</code></pre>
+
+    <h2>Configurare rute cu Guards</h2>
+    <pre><code><span class="keyword">export const</span> routes: <span class="type">Routes</span> = [
+  { path: <span class="string">''</span>, redirectTo: <span class="string">'login'</span>, pathMatch: <span class="string">'full'</span> },
+  { path: <span class="string">'login'</span>,    loadComponent: () =&gt; import(<span class="string">'./features/auth/login/login'</span>)... },
+  { path: <span class="string">'register'</span>, loadComponent: () =&gt; import(<span class="string">'./features/auth/register/register'</span>)... },
+  {
+    path: <span class="string">'dashboard'</span>,
+    canActivate: [authGuard],         <span class="comment">// ← blocat fără autentificare</span>
+    loadComponent: () =&gt; import(<span class="string">'./features/dashboard/dashboard'</span>)...
+  },
+  <span class="comment">// Exemplu cu roleGuard:</span>
+  <span class="comment">// { path: 'admin', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, ... }</span>
+  { path: <span class="string">'unauthorized'</span>, loadComponent: () =&gt; import(<span class="string">'./features/errors/unauthorized'</span>)... },
+  { path: <span class="string">'**'</span>,           loadComponent: () =&gt; import(<span class="string">'./features/errors/not-found'</span>)... }
+];</code></pre>
+
+    <div class="callout ok">
+      <p><strong>Lazy loading:</strong> Toate componentele folosesc <code>loadComponent</code> cu import dinamic. Angular descarcă codul unei componente <strong>doar când ruta e accesată</strong>, nu la pornirea aplicației. Reduce dimensiunea bundle-ului inițial.</p>
+    </div>
+
+    <h2>Diferența dintre AuthGuard și JwtInterceptor</h2>
+    <table>
+      <tr><th>AuthGuard</th><th>JwtInterceptor</th></tr>
+      <tr><td>Rulează <strong>înainte</strong> de a încărca componenta</td><td>Rulează la <strong>fiecare request HTTP</strong></td></tr>
+      <tr><td>Verifică dacă token-ul există</td><td>Adaugă token-ul în header</td></tr>
+      <tr><td>Blochează navigarea</td><td>Gestionează 401 de la server</td></tr>
+      <tr><td>Protecție la nivel de rută</td><td>Protecție la nivel de request</td></tr>
+      <tr><td>Token expirat dar prezent → permite accesul</td><td>Server returnează 401 → curăță și redirecționează</td></tr>
+    </table>
+
+    <div class="callout">
+      <p><strong>De ce avem nevoie de ambele?</strong> AuthGuard verifică rapid dacă token-ul există în storage (verificare locală, fără request). Dacă token-ul există dar e expirat, guard-ul îl lasă să treacă — serverul va returna 401, pe care interceptorul îl prinde și face cleanup. Cele două se completează.</p>
+    </div>
+
+    <h2>Pagini de eroare custom</h2>
+    <p>Paginile de eroare 404 și 401 urmează același stil ca login/register — split layout cu panou stâng gradient și card drept cu informația erorii.</p>
+
+    <table>
+      <tr><th>Rută</th><th>Componentă</th><th>Când apare</th></tr>
+      <tr><td><code>/unauthorized</code></td><td><code>UnauthorizedComponent</code></td><td>RoleGuard blochează accesul (rol insuficient)</td></tr>
+      <tr><td><code>/**</code> (wildcard)</td><td><code>NotFoundComponent</code></td><td>Orice URL necunoscut</td></tr>
+    </table>
+
+    <div class="callout warn">
+      <p><strong>Ordinea rutelor contează:</strong> Ruta wildcard <code>**</code> trebuie să fie <strong>ultima</strong> în array. Angular Router parcurge rutele în ordine și se oprește la primul match. Dacă <code>**</code> e prima, toate rutele duc la 404.</p>
+    </div>
+
+    <h2>Checklist testare Ziua 14</h2>
+    <ul class="checklist">
+      <li>/dashboard fără login → redirect la /login</li>
+      <li>Login reușit → redirect la /dashboard cu username și rol</li>
+      <li>Request pe rută protejată → header Authorization: Bearer ... adăugat automat</li>
+      <li>/ceva-inexistent → pagina 404</li>
+      <li>/unauthorized → pagina 401</li>
+      <li>Logout → redirect la /login, token șters din storage</li>
+      <li>După logout, /dashboard → redirect la /login din nou</li>
+    </ul>
+
+    <h2>Întrebări examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">1. Ce face un HTTP Interceptor în Angular?</div>
+      <div class="qa-a">Un interceptor interceptează toate requesturile HTTP înainte de a fi trimise și toate răspunsurile înainte de a ajunge la componentă. Poate modifica requestul (adăugă headere), poate transforma răspunsul sau poate trata erorile centralizat. E echivalentul unui middleware HTTP pe frontend.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">2. Care este diferența dintre CanActivate și CanLoad?</div>
+      <div class="qa-a"><code>CanActivate</code> rulează înainte de a activa o rută — componenta e deja descărcată dar nu e afișată. <code>CanLoad</code> previne descărcarea codului lazy-loaded dacă utilizatorul nu e autorizat. În Angular 15+, <code>CanLoad</code> e deprecat în favoarea <code>CanMatch</code>. În proiect folosim <code>CanActivate</code> care e suficient pentru rutele protejate.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">3. Ce este lazy loading și ce avantaj aduce?</div>
+      <div class="qa-a">Lazy loading înseamnă că codul unei componente/modul e descărcat doar când utilizatorul navighează la ruta respectivă, nu la pornirea aplicației. Avantaj: bundle-ul inițial e mai mic → aplicația pornește mai repede. În Angular, se implementează cu <code>loadComponent</code> + import dinamic.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">4. De ce interceptorul nu trebuie să apeleze logout() la 401 pe /auth/login?</div>
+      <div class="qa-a">Un 401 pe <code>/auth/login</code> înseamnă credențiale greșite — utilizatorul a introdus parola greșit. Dacă interceptorul ar apela <code>logout()</code> pentru orice 401, ar curăța tokenurile și ar redirecționa la /login chiar și când utilizatorul tocmai încearcă să se autentifice. Soluție: excludem rutele <code>/auth/</code> de la tratamentul automat al 401.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">5. Cum protejezi o rută pe bază de rol în Angular?</div>
+      <div class="qa-a">Se folosește <code>CanActivateFn</code> (RoleGuard) care citește rolurile permise din <code>route.data['roles']</code> și verifică dacă rolul utilizatorului curent e în acea listă. În configurația rutei se adaugă <code>canActivate: [roleGuard]</code> și <code>data: { roles: ['ADMIN'] }</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">6. Ce se întâmplă dacă token-ul JWT există în storage dar e expirat?</div>
+      <div class="qa-a">AuthGuard verifică doar existența token-ului (<code>!!getToken()</code>), nu validitatea lui. Dacă token-ul există dar e expirat, guard-ul permite accesul. Primul request HTTP returnează 401 de la server. Interceptorul prinde 401-ul, curăță token-ul din storage și redirecționează la /login. Cele două straturi se complementează.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">7. De ce clearTokens() e mai sigur decât logout() în interceptor?</div>
+      <div class="qa-a"><code>logout()</code> face un request HTTP către <code>/auth/logout</code> care poate eșua dacă token-ul e deja invalid (server returnează 500 sau 401). Aceasta poate crea un lanț de requesturi eșuate sau o buclă. <code>clearTokens()</code> operează sincron pe localStorage/sessionStorage — nu depinde de server și nu poate eșua.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">8. Cum funcționează ruta wildcard ** în Angular Router?</div>
+      <div class="qa-a">Ruta <code>**</code> se potrivește cu orice URL care nu a fost prins de rutele anterioare. Angular Router parcurge rutele în ordine — primul match câștigă. De aceea <code>**</code> trebuie să fie ultimă în array. Dacă e prima, toate navigările ar duce la pagina 404, indiferent de URL.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Interceptor, Guards și Dashboard</h2>
+
+<div class="callout" style="background:#1a1000;border-left:4px solid #fbbf24;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> AuthService creat (Tutorial 13). Rutele de bază configurate în app.routes.ts.</p>
+</div>
+
+<div style="background:#1a1000;border:1px solid #713f12;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fbbf24">Pasul 1 — Creează JWT Interceptor</strong>
+  <div style="margin-top:12px">
+    <pre><code>ng generate interceptor interceptors/jwt</code></pre>
+    <p>Editează <code>src/app/interceptors/jwt.interceptor.ts</code>:</p>
+    <pre><code>import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
+
+export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  const token = authService.getToken();
+
+  // Adaugă token-ul la fiecare request (dacă există)
+  const authReq = token
+    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+    : req;
+
+  return next(authReq).pipe(
+    catchError(err => {
+      if (err.status === 401) {
+        // Token expirat sau invalid → logout și redirect la login
+        authService.logout();
+        router.navigate(['/login']);
+      }
+      return throwError(() => err);
+    })
+  );
+};</code></pre>
+  </div>
+</div>
+
+<div style="background:#1a1000;border:1px solid #713f12;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fbbf24">Pasul 2 — Creează AuthGuard și RoleGuard</strong>
+  <div style="margin-top:12px">
+    <pre><code>ng generate guard guards/auth
+ng generate guard guards/role</code></pre>
+    <p>Editează <code>src/app/guards/auth.guard.ts</code>:</p>
+    <pre><code>import { CanActivateFn } from '@angular/router';
+import { inject } from '@angular/core';
+import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';
+
+export const authGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isLoggedIn()) {
+    return true;
+  }
+  router.navigate(['/login']);
+  return false;
+};</code></pre>
+    <p>Editează <code>src/app/guards/role.guard.ts</code>:</p>
+    <pre><code>export const roleGuard: CanActivateFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  const allowedRoles: string[] = route.data['roles'] ?? [];
+  const userRole = authService.getUserRole();   // extrage rolul din JWT payload
+
+  if (allowedRoles.includes(userRole)) {
+    return true;
+  }
+  router.navigate(['/unauthorized']);
+  return false;
+};</code></pre>
+  </div>
+</div>
+
+<div style="background:#1a1000;border:1px solid #713f12;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fbbf24">Pasul 3 — Configurează rutele cu Guards și Lazy Loading</strong>
+  <div style="margin-top:12px">
+    <p>Editează <code>src/app/app.routes.ts</code>:</p>
+    <pre><code>export const routes: Routes = [
+  { path: 'login', loadComponent: () => import('./features/auth/login/login')
+      .then(m => m.LoginComponent) },
+
+  { path: 'dashboard', canActivate: [authGuard],
+    loadComponent: () => import('./features/dashboard/layout/layout')
+      .then(m => m.DashboardLayoutComponent),
+    children: [
+      { path: 'users', canActivate: [roleGuard], data: { roles: ['ADMIN'] },
+        loadComponent: () => import('./features/dashboard/users/users')
+          .then(m => m.UsersComponent) },
+      { path: 'profile', canActivate: [roleGuard], data: { roles: ['ADMIN', 'STUDENT', 'SECRETARIAT'] },
+        loadComponent: () => import('./features/dashboard/profile/profile')
+          .then(m => m.ProfileComponent) },
+    ]},
+
+  { path: 'unauthorized', loadComponent: () => import('./features/errors/unauthorized/unauthorized')
+      .then(m => m.UnauthorizedComponent) },
+  { path: '**', loadComponent: () => import('./features/errors/not-found/not-found')
+      .then(m => m.NotFoundComponent) }   // ** trebuie să fie ULTIMA rută
+];</code></pre>
+    <p><code>loadComponent: () => import(...)</code> = <strong>lazy loading</strong> — componenta se descarcă din rețea doar când utilizatorul navighează la ea, nu la startup.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong></p>
+  <pre><code># 1. Accesează direct /dashboard fără să fii logat
+http://localhost:4300/dashboard
+# → trebuie să redirecționeze la /login (authGuard)
+
+# 2. Loghează-te ca STUDENT și accesează /dashboard/users
+http://localhost:4300/dashboard/users
+# → trebuie să redirecționeze la /unauthorized (roleGuard, STUDENT nu are acces)
+
+# 3. Loghează-te ca ADMIN și accesează /dashboard/users
+# → 200, lista de utilizatori
+
+# 4. F12 → Network → Request Headers → orice request protejat trebuie să aibă:
+# Authorization: Bearer eyJ...</code></pre>
+</div>
+</div>
+
+  <footer>Ziua 14 — Portal Admitere · JWT Interceptor, Guards, Dashboard</footer>
+</body>
+</html>

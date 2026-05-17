@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Config Server & @RefreshScope – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#3b0764,#6d28d9);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#ddd6fe;margin-top:8px;font-size:1.05rem}
+    .container{max-width:900px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#a78bfa;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#c4b5fd;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .yaml-key{color:#f472b6}
+    .yaml-val{color:#fbbf24}
+    .yaml-str{color:#34d399}
+    .yaml-comment{color:#475569;font-style:italic}
+    .keyword{color:#f472b6}
+    .annotation{color:#34d399}
+    .string{color:#fbbf24}
+    .comment{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .callout{background:#1e293b;border-left:4px solid #a78bfa;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b}
+    .callout.success{border-color:#10b981}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#3b0764;color:#c4b5fd;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #6d28d9}
+    .arrow{color:#a78bfa;font-size:1.4rem}
+    .demo-steps{counter-reset:demo-step}
+    .demo-step{counter-increment:demo-step;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px 20px;margin:12px 0;position:relative;padding-left:60px}
+    .demo-step::before{content:counter(demo-step);position:absolute;left:16px;top:50%;transform:translateY(-50%);width:30px;height:30px;background:#6d28d9;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;line-height:30px;text-align:center}
+    .demo-step h4{color:#c4b5fd;font-size:.95rem;margin-bottom:6px}
+    .demo-step p{color:#94a3b8;font-size:.88rem;margin:0}
+    .demo-step code{background:#0f172a;padding:2px 6px;border-radius:4px;font-size:.83rem}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#a78bfa;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#a78bfa;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #6d28d9;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>⚙️ Config Server & @RefreshScope</h1>
+    <p>Configurație externalizată și reîncărcare dinamică fără restart de aplicație</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Problema: configurație "îngropată" în aplicație</h2>
+    <p>Dacă ai secretul JWT în <code>application.yml</code> al fiecărui microserviciu, ca să îl schimbi trebuie să restartezi toate serviciile. Într-un sistem cu 10 microservicii, asta e inacceptabil.</p>
+
+    <div class="callout">
+      <p><strong>Soluție:</strong> Spring Cloud Config Server – un serviciu central care servește configurații pentru toate microserviciile. Schimbi în Config Server, trimiți un POST la /actuator/refresh, și microserviciul preia noile valori <em>fără restart</em>.</p>
+    </div>
+
+    <h2>Arhitectura</h2>
+    <div class="flow">
+      <div class="step">config-server<br/><small>(port 8888)</small></div>
+      <span class="arrow">→ servește →</span>
+      <div class="step">user-service<br/><small>(port 8081)</small></div>
+      <span class="arrow">→ @RefreshScope →</span>
+      <div class="step">JwtUtil preia noile valori</div>
+    </div>
+
+    <h2>Config Server – setup</h2>
+
+    <h3>1. Dependința în pom.xml</h3>
+    <pre><code><span class="comment">&lt;!-- config-server/pom.xml --&gt;</span>
+&lt;<span class="yaml-key">dependency</span>&gt;
+    &lt;<span class="yaml-key">groupId</span>&gt;org.springframework.cloud&lt;/<span class="yaml-key">groupId</span>&gt;
+    &lt;<span class="yaml-key">artifactId</span>&gt;spring-cloud-config-server&lt;/<span class="yaml-key">artifactId</span>&gt;
+&lt;/<span class="yaml-key">dependency</span>&gt;</code></pre>
+
+    <h3>2. Activare în Application.java</h3>
+    <pre><code><span class="annotation">@SpringBootApplication</span>
+<span class="annotation">@EnableConfigServer</span>
+<span class="keyword">public class</span> <span class="type">ConfigServerApplication</span> {
+    <span class="keyword">public static void</span> main(String[] args) {
+        SpringApplication.run(<span class="type">ConfigServerApplication</span>.class, args);
+    }
+}</code></pre>
+
+    <h3>3. Fișier de configurație pentru user-service</h3>
+    <p>Creat la <code>config-server/src/main/resources/config/user-service.yml</code>:</p>
+    <pre><code><span class="yaml-comment"># config-server/src/main/resources/config/user-service.yml</span>
+<span class="yaml-key">jwt</span>:
+  <span class="yaml-key">secret</span>: <span class="yaml-str">404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970</span>
+  <span class="yaml-key">expiration</span>: <span class="yaml-val">86400000</span>    <span class="yaml-comment"># 24 ore</span>
+  <span class="yaml-key">refresh-expiration</span>: <span class="yaml-val">604800000</span>  <span class="yaml-comment"># 7 zile</span></code></pre>
+
+    <h2>User Service – consumă Config Server</h2>
+
+    <h3>Dependința Spring Cloud Config Client</h3>
+    <pre><code>&lt;<span class="yaml-key">dependency</span>&gt;
+    &lt;<span class="yaml-key">groupId</span>&gt;org.springframework.cloud&lt;/<span class="yaml-key">groupId</span>&gt;
+    &lt;<span class="yaml-key">artifactId</span>&gt;spring-cloud-starter-config&lt;/<span class="yaml-key">artifactId</span>&gt;
+&lt;/<span class="yaml-key">dependency</span>&gt;</code></pre>
+
+    <h3>application.yml – importul configurației</h3>
+    <pre><code><span class="yaml-comment"># user-service/src/main/resources/application.yml</span>
+<span class="yaml-key">spring</span>:
+  <span class="yaml-key">application</span>:
+    <span class="yaml-key">name</span>: <span class="yaml-str">user-service</span>  <span class="yaml-comment"># Config Server caută user-service.yml</span>
+  <span class="yaml-key">config</span>:
+    <span class="yaml-key">import</span>: <span class="yaml-str">"optional:configserver:http://localhost:8888"</span>
+    <span class="yaml-comment">         # ↑ optional: dacă Config Server nu e pornit, aplicația merge oricum</span>
+
+<span class="yaml-comment"># Expune endpoint-ul /actuator/refresh</span>
+<span class="yaml-key">management</span>:
+  <span class="yaml-key">endpoints</span>:
+    <span class="yaml-key">web</span>:
+      <span class="yaml-key">exposure</span>:
+        <span class="yaml-key">include</span>: <span class="yaml-str">health,info,prometheus,refresh</span></code></pre>
+
+    <h2>@RefreshScope pe JwtUtil</h2>
+    <p><code>@RefreshScope</code> îi spune Spring că bean-ul trebuie recreat când se apelează <code>/actuator/refresh</code>. Noile valori <code>@Value</code> sunt reinjectate.</p>
+
+    <pre><code><span class="annotation">@RefreshScope</span>   <span class="comment">// bean-ul se recreează la POST /actuator/refresh</span>
+<span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="type">JwtUtil</span> {
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.secret}"</span>)
+    <span class="keyword">private</span> String secret;         <span class="comment">// reîncărcat din Config Server</span>
+
+    <span class="annotation">@Value</span>(<span class="string">"${jwt.expiration}"</span>)
+    <span class="keyword">private long</span> expiration;       <span class="comment">// reîncărcat din Config Server</span>
+
+    <span class="comment">// ... metode de generare/validare token</span>
+}</code></pre>
+
+    <div class="callout warn">
+      <p><strong>Atenție:</strong> Fără <code>@RefreshScope</code>, chiar dacă apelezi <code>/actuator/refresh</code>, JwtUtil păstrează valorile vechi din momentul pornirii aplicației. <code>@RefreshScope</code> este obligatoriu pe orice bean cu <code>@Value</code> din Config Server.</p>
+    </div>
+
+    <h2>Demo pas cu pas – @RefreshScope în acțiune</h2>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <h4>Pornește Config Server + user-service</h4>
+        <p>Asigură-te că ambele rulează. Config Server pe portul 8888, user-service pe 8081.</p>
+      </div>
+      <div class="demo-step">
+        <h4>Generează un token și verifică expiry-ul pe jwt.io</h4>
+        <p>POST <code>/api/auth/login</code>, copiază accessToken, lipește pe <code>jwt.io</code> → câmpul <code>exp</code> = timestamp Unix al expirării.</p>
+      </div>
+      <div class="demo-step">
+        <h4>Schimbă expiration în config-server/config/user-service.yml</h4>
+        <p>Modifică <code>expiration: 3600000</code> (1 oră în loc de 24 ore). Salvează fișierul.</p>
+      </div>
+      <div class="demo-step">
+        <h4>Trimite POST la /actuator/refresh</h4>
+        <p><code>POST http://localhost:8081/actuator/refresh</code> cu body gol. Răspuns: lista de proprietăți actualizate.</p>
+      </div>
+      <div class="demo-step">
+        <h4>Generează un nou token și verifică pe jwt.io</h4>
+        <p>Noul token are <code>exp</code> cu 1 oră față de <code>iat</code>, în loc de 24 ore. Schimbarea a luat efect fără restart!</p>
+      </div>
+    </div>
+
+    <h2>Răspuns de la /actuator/refresh</h2>
+    <pre><code><span class="comment">// POST http://localhost:8081/actuator/refresh</span>
+<span class="comment">// Răspuns:</span>
+[
+  <span class="string">"jwt.expiration"</span>,
+  <span class="string">"config.client.version"</span>
+]</code></pre>
+
+    <h2>Avantaje față de application.yml local</h2>
+    <table>
+      <tr><th>Aspect</th><th>Local application.yml</th><th>Config Server</th></tr>
+      <tr><td>Schimbare configurație</td><td>Restart obligatoriu</td><td>POST /actuator/refresh</td></tr>
+      <tr><td>Configurație per mediu</td><td>Profile separate</td><td>Fișiere separate (dev, prod)</td></tr>
+      <tr><td>Secret management</td><td>În cod sursă</td><td>Centralizat, poate fi criptat</td></tr>
+      <tr><td>Audit trail</td><td>Greu de urmărit</td><td>Git history al config repo</td></tr>
+    </table>
+
+    <div class="callout success">
+      <p><strong>În producție:</strong> Config Server poate citi dintr-un Git repository privat. Astfel, schimbările de configurație sunt versionabile și auditate prin Git commits.</p>
+    </div>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce este Spring Cloud Config Server și ce problemă rezolvă?</div>
+      <div class="qa-a">Config Server este un microserviciu centralizat care servește configurații (proprietăți) pentru toate celelalte microservicii. Rezolvă problema „configurației îngropate" — fără el, fiecare microserviciu are propriul <code>application.yml</code> și o schimbare (ex: secretul JWT) necesită restart-ul tuturor. Cu Config Server: schimbi o dată, trimiți un POST la <code>/actuator/refresh</code>, și serviciile preiau noile valori <strong>fără restart</strong>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face @EnableConfigServer și unde se pune?</div>
+      <div class="qa-a"><code>@EnableConfigServer</code> se pune pe clasa main (<code>ConfigServerApplication.java</code>) împreună cu <code>@SpringBootApplication</code>. Activează servlet-ul care servește configurațiile. Config Server citește fișierele din <code>src/main/resources/config/</code> și le servește la URL-uri de forma <code>/user-service/default</code>. Numele fișierului (ex: <code>user-service.yml</code>) trebuie să corespundă cu <code>spring.application.name</code> al clientului.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face @RefreshScope și ce se întâmplă fără el?</div>
+      <div class="qa-a"><code>@RefreshScope</code> pe <code>JwtUtil</code> înseamnă că Spring distruge instanța curentă și creează una nouă la <code>POST /actuator/refresh</code>, reinjectând valorile <code>@Value</code> din Config Server. <strong>Fără @RefreshScope</strong>: bean-ul este singleton standard, creat o singură dată la startup. Chiar dacă trimiți refresh, JwtUtil păstrează secreta și expiry-ul originale — schimbarea nu are efect.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce înseamnă optional: în spring.config.import și de ce e important?</div>
+      <div class="qa-a"><code>spring.config.import: "optional:configserver:http://localhost:8888"</code> — prefix-ul <code>optional:</code> spune Spring că dacă Config Server nu e disponibil la pornire, aplicația merge oricum cu valorile locale din <code>application.yml</code>. Fără <code>optional:</code>, dacă Config Server nu e pornit, aplicația eșuează la startup cu o eroare de conexiune. Util în dezvoltare când nu vrei să pornești Config Server de fiecare dată.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce returnează POST /actuator/refresh și de ce e necesar în application.yml?</div>
+      <div class="qa-a">Returnează un array JSON cu numele proprietăților care s-au schimbat: <code>["jwt.expiration", "config.client.version"]</code>. Pentru ca endpoint-ul să fie accesibil, trebuie expus explicit în <code>application.yml</code> sub <code>management.endpoints.web.exposure.include: health,info,prometheus,refresh</code>. Implicit, Actuator nu expune <code>refresh</code> din motive de securitate.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum caută Config Server configurația pentru un microserviciu?</div>
+      <div class="qa-a">Config Server folosește <code>spring.application.name</code> al clientului ca cheie de căutare. Dacă <code>name: user-service</code>, caută fișierul <code>user-service.yml</code> în directorul <code>config/</code>. Suportă și profiluri: <code>user-service-dev.yml</code> pentru profilul <code>dev</code>. Valorile din fișierul de profil suprascriu valorile din fișierul general, la fel ca Spring Profiles normale.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce @RefreshScope cauzează probleme în testele JUnit?</div>
+      <div class="qa-a"><code>@RefreshScope</code> este o adnotare din Spring Cloud care înregistrează un scope custom numit <code>refresh</code>. Testele cu <code>@SpringBootTest</code> nu includ Spring Cloud în context (exclus explicit pentru a evita conexiunile la RabbitMQ/Redis). Când Spring încearcă să creeze bean-ul JwtUtil cu scope-ul <code>refresh</code>, aruncă <code>No Scope registered for scope name 'refresh'</code>. Soluția: scriem testele JwtUtil fără context Spring, folosind <code>ReflectionTestUtils</code>.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Config Server</h2>
+
+<div class="callout" style="background:#130f2d;border-left:4px solid #a78bfa;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Discovery Server (Eureka) creat și pornit. Spring Cloud BOM adăugat în pom.xml-ul părinte.</p>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 1 — Creează modulul config-server</strong>
+  <div style="margin-top:12px">
+    <p>Generează un proiect nou la <strong>start.spring.io</strong>: dependințe <strong>Config Server</strong> + <strong>Eureka Discovery Client</strong>. Port: <code>8888</code>.</p>
+    <p>Activează serverul în clasa principală:</p>
+    <pre><code>@SpringBootApplication
+@EnableConfigServer
+public class ConfigServerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ConfigServerApplication.class, args);
+    }
+}</code></pre>
+    <p>Configurează <code>application.yml</code>:</p>
+    <pre><code>server:
+  port: 8888
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native          # citește din filesystem, nu din Git
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config  # folderul cu yml-urile serviciilor
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 2 — Creează fișierul de configurare pentru user-service</strong>
+  <div style="margin-top:12px">
+    <p>Creează folderul <code>config-server/src/main/resources/config/</code> și în el fișierul <code>user-service.yml</code>. Numele fișierului = <code>spring.application.name</code> al clientului:</p>
+    <pre><code>jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000
+  refresh-expiration: 604800000</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 3 — Conectează user-service la Config Server</strong>
+  <div style="margin-top:12px">
+    <p>Adaugă dependința în <code>user-service/pom.xml</code>:</p>
+    <pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-cloud-starter-config&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+    <p>În <code>user-service/src/main/resources/application.yml</code>:</p>
+    <pre><code>spring:
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  application:
+    name: user-service   # trebuie să coincidă cu numele fișierului user-service.yml</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 4 — Adaugă @RefreshScope și expune /actuator/refresh</strong>
+  <div style="margin-top:12px">
+    <pre><code>@Component
+@RefreshScope   // bean-ul va fi recreat la POST /actuator/refresh
+public class JwtUtil {
+    @Value("${jwt.secret}")
+    private String secret;
+    // ...
+}</code></pre>
+    <p>În <code>application.yml</code> al user-service:</p>
+    <pre><code>management:
+  endpoints:
+    web:
+      exposure:
+        include: health, refresh</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Pornește config-server (8888) apoi user-service (8081).</p>
+  <pre><code># Verifică că user-service primește configurarea:
+http://localhost:8888/user-service/default
+# → JSON cu {"jwt":{"secret":"404E...","expiration":86400000}}</code></pre>
+  <p>Pentru a testa refresh: modifică <code>expiration</code> în <code>user-service.yml</code>, apoi trimite <code>POST http://localhost:8081/actuator/refresh</code> — valorile se actualizează fără restart.</p>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial Config Server & @RefreshScope &nbsp;|&nbsp; <a href="index.html" style="color:#a78bfa">Toate tutorialele</a></footer>
+</body>
+</html>

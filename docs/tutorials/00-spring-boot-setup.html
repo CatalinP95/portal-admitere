@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spring Boot – Structura Proiectului</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#0f4c75,#1b6ca8);padding:48px 24px;text-align:center}
+    header h1{font-size:2.2rem;color:#fff;font-weight:700}
+    header p{color:#bae6fd;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#38bdf8;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#7dd3fc;margin:22px 0 8px}
+    h4{font-size:1rem;color:#93c5fd;margin:16px 0 6px}
+    p{color:#cbd5e1;margin-bottom:14px}
+    ul,ol{color:#cbd5e1;padding-left:22px;margin-bottom:14px}
+    li{margin-bottom:6px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:22px;overflow-x:auto;margin:16px 0;position:relative}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#7dd3fc}
+    .kw{color:#f472b6}
+    .ann{color:#34d399}
+    .str{color:#fbbf24}
+    .cmt{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .num{color:#fb923c}
+    .callout{background:#0f2744;border-left:4px solid #38bdf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b;background:#1c1207}
+    .callout.ok{border-color:#10b981;background:#022c22}
+    .callout.danger{border-color:#ef4444;background:#1c0607}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#7dd3fc;padding:11px 14px;text-align:left;font-size:.9rem;border-bottom:2px solid #334155}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem;vertical-align:top}
+    td code{font-size:.83rem;background:#0f172a;padding:2px 6px;border-radius:4px}
+    tr:hover td{background:#1e293b44}
+    .qa{background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:18px 22px;margin:14px 0}
+    .qa .q{color:#38bdf8;font-weight:600;margin-bottom:8px}
+    .qa .a{color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .badge{display:inline-block;background:#312e81;color:#a5b4fc;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:600;margin:2px}
+    .dir-tree{background:#020617;border:1px solid #334155;border-radius:8px;padding:20px;font-family:'Consolas',monospace;font-size:.83rem;color:#94a3b8;line-height:2}
+    .dir-tree .folder{color:#38bdf8}
+    .dir-tree .file{color:#7dd3fc}
+    .dir-tree .desc{color:#475569;font-style:italic}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:50px}
+  </style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+<header>
+  <h1>Spring Boot – Structura Proiectului</h1>
+  <p>@SpringBootApplication, IoC, Dependency Injection, application.yml, profile-uri</p>
+</header>
+
+<div class="container">
+
+<h2>1. Ce este Spring Boot?</h2>
+<p>Spring Boot este un framework care simplifică crearea aplicațiilor Java enterprise eliminând configurările manuale. Oferă:</p>
+<ul>
+  <li><strong>Autoconfigurare</strong> — detectează librăriile din classpath și configurează automat beans-urile necesare</li>
+  <li><strong>Embedded server</strong> — rulezi cu <code>java -jar app.jar</code>, nu mai ai nevoie de Tomcat extern</li>
+  <li><strong>Starter dependencies</strong> — <code>spring-boot-starter-web</code> adaugă tot ce trebuie pentru un REST API</li>
+  <li><strong>Production-ready</strong> — Actuator, metrici, health checks incluse</li>
+</ul>
+
+<div class="callout">
+  <p><strong>Diferența Spring vs Spring Boot:</strong> Spring este framework-ul de bază (IoC, AOP, Security, Data). Spring Boot este un layer deasupra care elimină boilerplate-ul și configurarea XML.</p>
+</div>
+
+<h2>2. @SpringBootApplication – punctul de intrare</h2>
+<p>Această adnotare singură înlocuiește trei adnotări separate:</p>
+<pre><code><span class="ann">@SpringBootApplication</span>   <span class="cmt">// = @Configuration + @EnableAutoConfiguration + @ComponentScan</span>
+<span class="kw">public class</span> <span class="type">UserServiceApplication</span> {
+
+    <span class="kw">public static void</span> main(String[] args) {
+        SpringApplication.run(<span class="type">UserServiceApplication</span>.<span class="kw">class</span>, args);
+    }
+}</code></pre>
+
+<table>
+  <tr><th>Adnotare</th><th>Ce face</th></tr>
+  <tr><td><code>@Configuration</code></td><td>Marchează clasa ca sursă de bean definitions (metode cu <code>@Bean</code>)</td></tr>
+  <tr><td><code>@EnableAutoConfiguration</code></td><td>Spring Boot scanează classpath-ul și configurează automat beans (DataSource, Security, Redis etc.)</td></tr>
+  <tr><td><code>@ComponentScan</code></td><td>Scanează pachetul curent și subpachetele după <code>@Component</code>, <code>@Service</code>, <code>@Repository</code>, <code>@Controller</code></td></tr>
+</table>
+
+<div class="callout warn">
+  <p><strong>Important:</strong> Clasa cu <code>@SpringBootApplication</code> trebuie să fie în pachetul rădăcină (ex: <code>com.campus.userservice</code>), nu într-un subpachet, altfel <code>@ComponentScan</code> nu găsește celelalte clase.</p>
+</div>
+
+<h2>3. Structura microserviciului user-service</h2>
+
+<div class="dir-tree">
+<span class="folder">user-service/</span><br/>
+├── <span class="folder">src/main/java/com/campus/userservice/</span><br/>
+│   ├── <span class="file">UserServiceApplication.java</span>   <span class="desc">// main class, @SpringBootApplication</span><br/>
+│   ├── <span class="folder">api/</span>                              <span class="desc">// REST Controllers (@RestController)</span><br/>
+│   │   ├── <span class="file">AuthController.java</span><br/>
+│   │   ├── <span class="file">UserController.java</span><br/>
+│   │   ├── <span class="file">UserProfileController.java</span><br/>
+│   │   └── <span class="file">AnnouncementController.java</span><br/>
+│   ├── <span class="folder">service/</span>                          <span class="desc">// Business logic (@Service)</span><br/>
+│   │   ├── <span class="file">AuthService.java</span><br/>
+│   │   ├── <span class="file">UserService.java</span><br/>
+│   │   ├── <span class="file">UserProfileService.java</span><br/>
+│   │   └── <span class="file">AuditLogService.java</span><br/>
+│   ├── <span class="folder">repository/</span>                       <span class="desc">// DB access (@Repository / JpaRepository)</span><br/>
+│   │   ├── <span class="file">UserRepository.java</span><br/>
+│   │   ├── <span class="file">UserProfileRepository.java</span><br/>
+│   │   ├── <span class="file">RefreshTokenRepository.java</span><br/>
+│   │   └── <span class="file">AuditLogRepository.java</span>          <span class="desc">// MongoDB</span><br/>
+│   ├── <span class="folder">model/</span>                            <span class="desc">// Entități JPA (@Entity) și modele MongoDB (@Document)</span><br/>
+│   ├── <span class="folder">dto/</span>                              <span class="desc">// Data Transfer Objects (fără adnotări JPA)</span><br/>
+│   ├── <span class="folder">security/</span>                         <span class="desc">// JWT, filtru, configurare Security</span><br/>
+│   ├── <span class="folder">config/</span>                           <span class="desc">// Configurări Spring (@Configuration)</span><br/>
+│   └── <span class="folder">exception/</span>                        <span class="desc">// GlobalExceptionHandler</span><br/>
+├── <span class="folder">src/main/resources/</span><br/>
+│   ├── <span class="file">application.yml</span>                   <span class="desc">// configurare principală</span><br/>
+│   └── <span class="file">application-dev.yml</span>               <span class="desc">// configurare dev</span><br/>
+└── <span class="folder">src/test/</span><br/>
+    ├── <span class="folder">java/</span>                             <span class="desc">// teste unitare și de integrare</span><br/>
+    └── <span class="folder">resources/application-test.yml</span>   <span class="desc">// configurare H2 pentru teste</span>
+</div>
+
+<h2>4. IoC și Dependency Injection</h2>
+
+<h3>4.1 Inversiunea Controlului (IoC)</h3>
+<p>În programarea tradițională, <em>tu</em> creezi obiectele: <code>new UserService()</code>. Cu IoC, <strong>Spring creează și gestionează obiectele</strong> (beans). Tu doar declari ce ai nevoie.</p>
+
+<h3>4.2 Dependency Injection (DI)</h3>
+<p>Spring <em>injectează</em> (pasează) dependențele automat. Există 3 moduri:</p>
+
+<pre><code><span class="cmt">// 1. Constructor Injection — RECOMANDAT (testabil, imutable)</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">UserProfileService</span> {
+    <span class="kw">private final</span> <span class="type">UserProfileRepository</span> userProfileRepository;
+    <span class="kw">private final</span> <span class="type">UserRepository</span> userRepository;
+
+    <span class="kw">public</span> <span class="type">UserProfileService</span>(<span class="type">UserProfileRepository</span> repo, <span class="type">UserRepository</span> userRepo) {
+        <span class="kw">this</span>.userProfileRepository = repo;
+        <span class="kw">this</span>.userRepository = userRepo;
+    }
+}
+
+<span class="cmt">// 2. Field Injection — NU este recomandat (nu testabil ușor)</span>
+<span class="ann">@Autowired</span>
+<span class="kw">private</span> <span class="type">UserRepository</span> userRepository;
+
+<span class="cmt">// 3. Setter Injection — rar folosit</span>
+<span class="ann">@Autowired</span>
+<span class="kw">public void</span> setRepository(<span class="type">UserRepository</span> repo) { ... }</code></pre>
+
+<div class="callout ok">
+  <p><strong>De ce constructor injection este recomandat?</strong><br/>
+  1. Câmpurile pot fi <code>final</code> — imutabile după construire<br/>
+  2. Eroarea apare la compilare, nu la runtime<br/>
+  3. Se poate testa ușor cu <code>new Service(mockRepo)</code> fără Spring</p>
+</div>
+
+<h3>4.3 Adnotările stereotip</h3>
+<table>
+  <tr><th>Adnotare</th><th>Unde se pune</th><th>Ce face</th></tr>
+  <tr><td><code>@Component</code></td><td>Orice clasă</td><td>Marcheaza clasa ca bean Spring generic</td></tr>
+  <tr><td><code>@Service</code></td><td>Business logic</td><td>Alias pentru @Component; marchează semantic layer-ul de servicii</td></tr>
+  <tr><td><code>@Repository</code></td><td>DAO / acces DB</td><td>@Component + conversie excepții JPA în DataAccessException</td></tr>
+  <tr><td><code>@Controller</code></td><td>MVC controllers</td><td>@Component + integrare cu Spring MVC</td></tr>
+  <tr><td><code>@RestController</code></td><td>REST API controllers</td><td>@Controller + @ResponseBody (JSON automat)</td></tr>
+  <tr><td><code>@Configuration</code></td><td>Clase de configurare</td><td>@Component + sursa de @Bean definitions</td></tr>
+</table>
+
+<h3>4.4 @Bean – definire manuală de beans</h3>
+<pre><code><span class="cmt">// ApplicationConfiguration.java</span>
+<span class="ann">@Configuration</span>
+<span class="kw">public class</span> <span class="type">ApplicationConfiguration</span> {
+
+    <span class="cmt">// Metoda returnează un bean gestionat de Spring</span>
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="type">PasswordEncoder</span> passwordEncoder() {
+        <span class="kw">return new</span> BCryptPasswordEncoder();
+        <span class="cmt">// BCrypt adaugă automat un salt random la fiecare hash</span>
+    }
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="type">AuthenticationManager</span> authManager(<span class="type">AuthenticationConfiguration</span> config) <span class="kw">throws</span> Exception {
+        <span class="kw">return</span> config.getAuthenticationManager();
+    }
+}</code></pre>
+
+<h2>5. application.yml – configurarea aplicației</h2>
+
+<pre><code><span class="cmt"># application.yml complet din user-service</span>
+spring:
+  application:
+    name: user-service          <span class="cmt"># numele serviciului (Eureka, logs)</span>
+  datasource:
+    url: jdbc:mysql://localhost:<span class="num">3306</span>/portaldb
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update          <span class="cmt"># create | create-drop | update | validate | none</span>
+    show-sql: <span class="kw">false</span>             <span class="cmt"># true = afișează SQL în consolă</span>
+    open-in-view: <span class="kw">false</span>         <span class="cmt"># evita OSIV anti-pattern</span>
+  data:
+    redis:
+      host: localhost
+      port: <span class="num">6379</span>
+  cache:
+    type: redis
+    redis:
+      time-to-live: <span class="num">600000</span>      <span class="cmt"># TTL cache = 10 minute în ms</span>
+  config:
+    import: <span class="str">"optional:configserver:"</span>  <span class="cmt"># Config Server (Spring Cloud)</span>
+
+server:
+  port: <span class="num">8081</span>                    <span class="cmt"># portul pe care rulează aplicația</span>
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:<span class="num">8761</span>/eureka  <span class="cmt"># Discovery Server</span></code></pre>
+
+<h3>5.1 ddl-auto – ce face Hibernate cu schema DB</h3>
+<table>
+  <tr><th>Valoare</th><th>Comportament</th><th>Când să folosești</th></tr>
+  <tr><td><code>create</code></td><td>Șterge și recreează schema la fiecare pornire</td><td>Teste, prototipuri</td></tr>
+  <tr><td><code>create-drop</code></td><td>Recreează la start, șterge la oprire</td><td>Teste (H2)</td></tr>
+  <tr><td><code>update</code></td><td>Adaugă coloane/tabele noi, NU șterge</td><td>Development</td></tr>
+  <tr><td><code>validate</code></td><td>Verifică că schema corespunde entităților, nu modifică</td><td>Producție</td></tr>
+  <tr><td><code>none</code></td><td>Hibernate nu face nimic cu schema</td><td>Producție cu migrații Flyway/Liquibase</td></tr>
+</table>
+
+<h3>5.2 @Value – injectarea valorilor din configurare</h3>
+<pre><code><span class="ann">@Value</span>(<span class="str">"${jwt.secret:defaultSecret}"</span>)  <span class="cmt">// valoarea după ':' este fallback dacă nu există în yml</span>
+<span class="kw">private</span> String secret;
+
+<span class="ann">@Value</span>(<span class="str">"${jwt.expiration:86400000}"</span>)
+<span class="kw">private long</span> expiration;
+
+<span class="ann">@Value</span>(<span class="str">"${server.port}"</span>)
+<span class="kw">private int</span> serverPort;</code></pre>
+
+<h2>6. Profile-uri Spring</h2>
+<p>Profile-urile permit configurări diferite pentru medii diferite (dev, test, prod).</p>
+
+<pre><code><span class="cmt"># application-test.yml — activ când spring.profiles.active=test</span>
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb     <span class="cmt"># H2 in-memory în loc de MySQL</span>
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create          <span class="cmt"># recreează schema înainte de fiecare test</span>
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+  cache:
+    type: none                  <span class="cmt"># dezactivăm Redis cache în teste</span></code></pre>
+
+<pre><code><span class="cmt">// Activare profile în test</span>
+<span class="ann">@SpringBootTest</span>
+<span class="ann">@ActiveProfiles</span>(<span class="str">"test"</span>)  <span class="cmt">// încarcă application-test.yml</span>
+<span class="kw">class</span> <span class="type">MyTest</span> { ... }
+
+<span class="cmt">// Activare profil la runtime</span>
+java -jar app.jar --spring.profiles.active=prod</code></pre>
+
+<h2>7. Maven – pom.xml structură</h2>
+
+<pre><code><span class="cmt">&lt;!-- Dependențe principale din user-service/pom.xml --&gt;</span>
+<span class="cmt">&lt;!-- Spring Boot Web (REST controllers, embedded Tomcat) --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+<span class="cmt">&lt;!-- Spring Security + JWT --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-security&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+<span class="cmt">&lt;!-- JPA + Hibernate (ORM pentru MySQL) --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+<span class="cmt">&lt;!-- Redis Cache --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-cache&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+<span class="cmt">&lt;!-- MongoDB (AuditLog) --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-data-mongodb&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+<span class="cmt">&lt;!-- Validare (@Valid, @NotNull, @Size etc.) --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-validation&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+<span class="cmt">&lt;!-- H2 pentru teste (in-memory DB) --&gt;</span>
+&lt;dependency&gt;
+    &lt;groupId&gt;com.h2database&lt;/groupId&gt;
+    &lt;artifactId&gt;h2&lt;/artifactId&gt;
+    &lt;scope&gt;test&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+
+<h2>8. Ciclul de viață al unui Bean Spring</h2>
+
+<pre><code><span class="cmt">// @PostConstruct — rulează imediat după ce bean-ul a fost injectat</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">MyService</span> {
+    <span class="ann">@PostConstruct</span>
+    <span class="kw">public void</span> init() {
+        System.out.println(<span class="str">"Bean creat și injectat, inițializare..."</span>);
+    }
+
+    <span class="ann">@PreDestroy</span>
+    <span class="kw">public void</span> cleanup() {
+        System.out.println(<span class="str">"Aplicația se oprește, curățenie..."</span>);
+    }
+}</code></pre>
+
+<h3>Ordinea completă de pornire Spring Boot</h3>
+<ol>
+  <li><code>main()</code> → <code>SpringApplication.run()</code></li>
+  <li>Se crează <strong>ApplicationContext</strong> (containerul IoC)</li>
+  <li>Se încarcă <strong>application.yml</strong> și proprietăți</li>
+  <li><strong>ComponentScan</strong> — se găsesc toate clasele adnotate</li>
+  <li><strong>AutoConfiguration</strong> — Spring configurează DataSource, Security, Cache etc.</li>
+  <li>Se creează beans și se <strong>injectează dependențele</strong></li>
+  <li>Se rulează metodele <code>@PostConstruct</code></li>
+  <li>Embedded Tomcat pornește pe portul configurat</li>
+  <li>Aplicația este gata să primească requesturi</li>
+</ol>
+
+<h2>9. DTO vs Entity – de ce avem ambele?</h2>
+<table>
+  <tr><th>Entity</th><th>DTO (Data Transfer Object)</th></tr>
+  <tr><td>Mapat direct pe tabela din DB</td><td>Nu are legătură cu DB</td></tr>
+  <tr><td>Are <code>@Entity</code>, <code>@Id</code>, <code>@Column</code></td><td>Clasă simplă (POJO)</td></tr>
+  <tr><td>Poate conține date sensibile (password hash)</td><td>Conține doar ce vrem să trimitem clientului</td></tr>
+  <tr><td><code>User.java</code></td><td><code>UserDto.java</code> — fără câmpul <code>password</code></td></tr>
+</table>
+
+<pre><code><span class="cmt">// UserDto.java — nu are password!</span>
+<span class="kw">public class</span> <span class="type">UserDto</span> {
+    <span class="kw">private</span> Long id;
+    <span class="kw">private</span> String username;
+    <span class="kw">private</span> String email;
+    <span class="kw">private</span> String role;
+
+    <span class="cmt">// factory method — convertire Entity → DTO</span>
+    <span class="kw">public static</span> <span class="type">UserDto</span> from(<span class="type">User</span> user) {
+        <span class="type">UserDto</span> dto = <span class="kw">new</span> <span class="type">UserDto</span>();
+        dto.id       = user.getId();
+        dto.username = user.getUsername();
+        dto.email    = user.getEmail();
+        dto.role     = user.getRole().name();
+        <span class="kw">return</span> dto;
+    }
+}</code></pre>
+
+<h2>10. Implementare pas cu pas — Creare microserviciu Spring Boot</h2>
+
+<div class="callout">
+  <p><strong>Prerequisite:</strong> Java 21, Maven 3.9+, VS Code cu extensia Spring Boot Extension Pack instalate. Vezi <a href="prerequisites.html" style="color:#38bdf8">pagina de prerequisite</a> dacă nu le ai.</p>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 1 — Generează proiectul cu Spring Initializr</strong>
+  <div style="margin-top:12px">
+    <p>Mergi la <strong>start.spring.io</strong> și configurează:</p>
+    <ul>
+      <li>Project: <strong>Maven</strong>, Language: <strong>Java</strong>, Spring Boot: <strong>3.2.5</strong></li>
+      <li>Group: <code>com.campus</code>, Artifact: <code>user-service</code></li>
+      <li>Java: <strong>21</strong></li>
+      <li>Dependințe de adăugat: <strong>Spring Web, Spring Security, Spring Data JPA, MySQL Driver, Spring Boot Actuator, Validation, Lombok</strong></li>
+    </ul>
+    <p>Click <strong>GENERATE</strong> → extrage ZIP-ul la calea <code>portal-admitere/user-service/</code></p>
+  </div>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 2 — Configurează application.yml</strong>
+  <div style="margin-top:12px">
+    <p>Șterge <code>src/main/resources/application.properties</code> și creează <code>src/main/resources/application.yml</code>:</p>
+    <pre><code>spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/portaldb
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+server:
+  port: 8081</code></pre>
+  </div>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 3 — Creează structura de pachete</strong>
+  <div style="margin-top:12px">
+    <p>În <code>src/main/java/com/campus/userservice/</code> creează folderele:</p>
+    <pre><code>mkdir api
+mkdir service
+mkdir repository
+mkdir model
+mkdir dto
+mkdir config
+mkdir exception</code></pre>
+    <p>Sau din VS Code: click dreapta pe pachetul rădăcină → New Folder pentru fiecare.</p>
+  </div>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 4 — Creează un model simplu</strong>
+  <div style="margin-top:12px">
+    <p>Creează fișierul <code>model/User.java</code>:</p>
+    <pre><code><span class="ann">@Entity</span>
+<span class="ann">@Table</span>(name = <span class="str">"users"</span>)
+<span class="ann">@Data</span>                    <span class="cmt">// Lombok: generează getters/setters/toString</span>
+<span class="ann">@NoArgsConstructor</span>
+<span class="kw">public class</span> <span class="type">User</span> {
+
+    <span class="ann">@Id</span>
+    <span class="ann">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="kw">private</span> Long id;
+
+    <span class="ann">@Column</span>(unique = <span class="kw">true</span>, nullable = <span class="kw">false</span>)
+    <span class="kw">private</span> String username;
+
+    <span class="ann">@Column</span>(nullable = <span class="kw">false</span>)
+    <span class="kw">private</span> String password;
+
+    <span class="ann">@Column</span>(unique = <span class="kw">true</span>, nullable = <span class="kw">false</span>)
+    <span class="kw">private</span> String email;
+}</code></pre>
+  </div>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 5 — Creează Repository și Service</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>repository/UserRepository.java</code>:</p>
+    <pre><code><span class="ann">@Repository</span>
+<span class="kw">public interface</span> <span class="type">UserRepository</span> <span class="kw">extends</span> <span class="type">JpaRepository</span>&lt;<span class="type">User</span>, Long&gt; {
+    Optional&lt;<span class="type">User</span>&gt; findByUsername(String username);
+    boolean existsByEmail(String email);
+}</code></pre>
+    <p>Creează <code>service/UserService.java</code>:</p>
+    <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">UserService</span> {
+
+    <span class="kw">private final</span> <span class="type">UserRepository</span> userRepository;
+
+    <span class="kw">public</span> <span class="type">UserService</span>(<span class="type">UserRepository</span> userRepository) {
+        <span class="kw">this</span>.userRepository = userRepository;
+    }
+
+    <span class="kw">public</span> List&lt;<span class="type">User</span>&gt; findAll() {
+        <span class="kw">return</span> userRepository.findAll();
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 6 — Creează un REST Controller</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>api/UserController.java</code>:</p>
+    <pre><code><span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/api/users"</span>)
+<span class="kw">public class</span> <span class="type">UserController</span> {
+
+    <span class="kw">private final</span> <span class="type">UserService</span> userService;
+
+    <span class="kw">public</span> <span class="type">UserController</span>(<span class="type">UserService</span> userService) {
+        <span class="kw">this</span>.userService = userService;
+    }
+
+    <span class="ann">@GetMapping</span>
+    <span class="kw">public</span> ResponseEntity&lt;List&lt;<span class="type">User</span>&gt;&gt; getAll() {
+        <span class="kw">return</span> ResponseEntity.ok(userService.findAll());
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="step" style="background:#0f2744;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 7 — Pornește aplicația</strong>
+  <div style="margin-top:12px">
+    <p>Asigură-te că Docker rulează și MySQL e pornit:</p>
+    <pre><code>docker compose up -d mysql</code></pre>
+    <p>Pornește aplicația din VS Code: apasă <strong>F5</strong> sau click pe butonul Run din Spring Boot Dashboard (panoul din stânga jos).</p>
+    <p>Sau din terminal:</p>
+    <pre><code>cd user-service
+mvn spring-boot:run</code></pre>
+  </div>
+</div>
+
+<div class="callout ok" style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Deschide browserul la <code>http://localhost:8081/api/users</code> — ar trebui să returneze <code>[]</code> (array gol) în format JSON. Dacă primești eroare 403, Security nu e configurat încă — asta e normal, vezi Tutorial 09.</p>
+</div>
+
+<h2>11. Întrebări posibile la examen</h2>
+
+<div class="qa">
+  <div class="q">Q: Ce este Spring Boot și cum diferă de Spring Framework?</div>
+  <div class="a">Spring Boot este un layer deasupra Spring Framework care elimină configurarea manuală prin autoconfigurare. Spring Framework oferă funcționalitățile de bază (IoC, AOP, Security, Data), dar trebuie configurat explicit. Spring Boot detectează librăriile din classpath și le configurează automat. Ex: dacă ai spring-boot-starter-data-jpa și un driver MySQL, Spring Boot creează automat DataSource și EntityManager.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @SpringBootApplication și din ce e compus?</div>
+  <div class="a">@SpringBootApplication = @Configuration + @EnableAutoConfiguration + @ComponentScan. @Configuration marchează clasa ca sursă de beans. @EnableAutoConfiguration activează autoconfigurarea (detectează classpath și configurează beans). @ComponentScan scanează pachetul curent și subpachetele după clase adnotate cu @Component, @Service, @Repository, @Controller.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Care este diferența dintre @Component, @Service și @Repository?</div>
+  <div class="a">Toate sunt alias-uri pentru @Component (înregistrează clasa ca bean Spring). Diferența este semantică: @Service marchează business logic, @Repository marchează acces la date (+ conversie excepții JPA), @Controller/@RestController marchează layer-ul web. Folosirea adnotării corecte ajută la înțelegerea codului și permite Spring să aplice aspecte specifice fiecărui layer.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce se preferă constructor injection față de field injection?</div>
+  <div class="a">Constructor injection permite câmpurile să fie final (imutabile), erorile de dependențe circulare apar la pornire nu la runtime, și clasa poate fi instanțiată și testată fără Spring (cu new MyService(mockRepo)). Field injection cu @Autowired necesită Spring pentru a funcționa și nu poate fi testat ușor.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face ddl-auto: update vs validate?</div>
+  <div class="a">update: Hibernate compară entitățile cu schema existentă și adaugă coloane/tabele noi dar NU șterge. validate: Hibernate verifică că schema existentă corespunde entităților și aruncă excepție dacă nu corespunde, dar nu modifică nimic. Pentru producție se recomandă validate sau none cu Flyway/Liquibase pentru migrații controlate.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce este un profile Spring și când îl folosești?</div>
+  <div class="a">Un profil permite configurări diferite pentru medii diferite. Ex: application-test.yml folosit în teste cu H2 in-memory, application-dev.yml pentru development, application-prod.yml pentru producție. Se activează cu @ActiveProfiles("test") în teste sau cu --spring.profiles.active=prod la startup. Permite dezactivarea anumitor autoconfigurări (ex: Redis, MongoDB) în teste.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce este IoC (Inversion of Control)?</div>
+  <div class="a">Tradițional: tu creezi obiectele de care ai nevoie (new UserService()). Cu IoC: Spring creează și gestionează obiectele (beans). Tu declari ce dependențe vrei (constructor injection) și Spring le pasează. Controlul creării obiectelor este inversat de la programator la framework. Avantaj: decuplare, testabilitate, management automat al ciclului de viață.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce avem nevoie de DTO și nu returnăm direct Entityurile?</div>
+  <div class="a">1. Securitate: entitățile pot conține date sensibile (password hash, intern). 2. Decuplare: clientul nu trebuie să cunoască structura internă a BD. 3. Performanță: DTO returnează doar câmpurile necesare. 4. Flexibilitate: poți schimba schema DB fără să schimbi API-ul public. Ex: UserDto nu conține câmpul password din entitatea User.</div>
+</div>
+
+</div>
+<footer>Portal Admitere – Tutorial 00: Spring Boot Setup &nbsp;|&nbsp; <a href="index.html" style="color:#38bdf8">Toate tutorialele</a></footer>
+</body>
+</html>

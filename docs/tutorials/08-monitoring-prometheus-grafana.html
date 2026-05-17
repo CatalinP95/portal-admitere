@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monitoring Prometheus & Grafana – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1c1917,#92400e);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#fde68a;margin-top:8px;font-size:1.05rem}
+    .container{max-width:900px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#fb923c;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#fdba74;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.85rem;color:#7dd3fc}
+    .yaml-key{color:#f472b6}
+    .yaml-val{color:#fbbf24}
+    .yaml-str{color:#34d399}
+    .yaml-comment{color:#475569;font-style:italic}
+    .callout{background:#1e293b;border-left:4px solid #fb923c;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.info{border-color:#38bdf8}
+    .callout.tip{border-color:#10b981}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .flow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0}
+    .step{background:#1c1917;color:#fdba74;padding:10px 18px;border-radius:8px;font-size:.88rem;font-weight:600;border:1px solid #92400e}
+    .arrow{color:#fb923c;font-size:1.4rem}
+    .demo-steps{counter-reset:demo-step}
+    .demo-step{counter-increment:demo-step;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:16px 20px;margin:12px 0;position:relative;padding-left:60px}
+    .demo-step::before{content:counter(demo-step);position:absolute;left:16px;top:50%;transform:translateY(-50%);width:30px;height:30px;background:#92400e;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;line-height:30px;text-align:center}
+    .demo-step h4{color:#fdba74;font-size:.95rem;margin-bottom:6px}
+    .demo-step p{color:#94a3b8;font-size:.88rem;margin:0}
+    .demo-step code{background:#0f172a;padding:2px 6px;border-radius:4px;font-size:.83rem}
+    .metric-item{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;margin:8px 0}
+    .metric-item .name{color:#fb923c;font-family:monospace;font-size:.88rem;margin-bottom:4px}
+    .metric-item .desc{color:#94a3b8;font-size:.83rem}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#fb923c;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#fb923c;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #92400e;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>📊 Monitoring cu Prometheus & Grafana</h1>
+    <p>Metrici din microservicii Spring Boot, vizualizate în timp real</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Arhitectura de monitoring</h2>
+    <div class="flow">
+      <div class="step">Spring Boot<br/><small>/actuator/prometheus</small></div>
+      <span class="arrow">← scrape la 15s</span>
+      <div class="step">Prometheus<br/><small>:9090</small></div>
+      <span class="arrow">← query PromQL</span>
+      <div class="step">Grafana<br/><small>:3000</small></div>
+    </div>
+
+    <p>Prometheus "trage" (pull model) metrici de la fiecare serviciu la intervalul de scrape. Grafana îl interogă pe Prometheus și afișează grafice.</p>
+
+    <h2>Setup Spring Boot – Actuator + Micrometer</h2>
+
+    <h3>Dependințe în pom.xml</h3>
+    <pre><code><span class="yaml-comment">&lt;!-- Actuator – expune endpointuri de monitorizare --&gt;</span>
+&lt;<span class="yaml-key">dependency</span>&gt;
+    &lt;<span class="yaml-key">groupId</span>&gt;org.springframework.boot&lt;/<span class="yaml-key">groupId</span>&gt;
+    &lt;<span class="yaml-key">artifactId</span>&gt;spring-boot-starter-actuator&lt;/<span class="yaml-key">artifactId</span>&gt;
+&lt;/<span class="yaml-key">dependency</span>&gt;
+
+<span class="yaml-comment">&lt;!-- Micrometer Prometheus – format metrics compatibil Prometheus --&gt;</span>
+&lt;<span class="yaml-key">dependency</span>&gt;
+    &lt;<span class="yaml-key">groupId</span>&gt;io.micrometer&lt;/<span class="yaml-key">groupId</span>&gt;
+    &lt;<span class="yaml-key">artifactId</span>&gt;micrometer-registry-prometheus&lt;/<span class="yaml-key">artifactId</span>&gt;
+&lt;/<span class="yaml-key">dependency</span>&gt;</code></pre>
+
+    <h3>application.yml – expunere endpoint-uri</h3>
+    <pre><code><span class="yaml-key">management</span>:
+  <span class="yaml-key">endpoints</span>:
+    <span class="yaml-key">web</span>:
+      <span class="yaml-key">exposure</span>:
+        <span class="yaml-key">include</span>: <span class="yaml-str">health,info,prometheus,refresh</span>
+  <span class="yaml-key">endpoint</span>:
+    <span class="yaml-key">health</span>:
+      <span class="yaml-key">show-details</span>: <span class="yaml-str">always</span>
+  <span class="yaml-key">metrics</span>:
+    <span class="yaml-key">export</span>:
+      <span class="yaml-key">prometheus</span>:
+        <span class="yaml-key">enabled</span>: <span class="yaml-val">true</span></code></pre>
+
+    <h2>Verificare endpoint /actuator/prometheus</h2>
+    <p>Accesează <code>http://localhost:8081/actuator/prometheus</code> în browser. Vei vedea mii de linii în format text:</p>
+    <pre><code><span class="yaml-comment"># HELP jvm_memory_used_bytes The amount of used memory</span>
+<span class="yaml-comment"># TYPE jvm_memory_used_bytes gauge</span>
+jvm_memory_used_bytes{area="heap",id="G1 Eden Space"} 5.24288E7
+jvm_memory_used_bytes{area="heap",id="G1 Old Gen"} 1.5728640E7
+
+<span class="yaml-comment"># HELP http_server_requests_seconds Duration of HTTP server request handling</span>
+<span class="yaml-comment"># TYPE http_server_requests_seconds summary</span>
+http_server_requests_seconds_count{method="GET",uri="/api/users"} 42
+http_server_requests_seconds_sum{method="GET",uri="/api/users"} 1.23</code></pre>
+
+    <h2>prometheus.yml – configurația de scraping</h2>
+    <pre><code><span class="yaml-key">global</span>:
+  <span class="yaml-key">scrape_interval</span>: <span class="yaml-str">15s</span>     <span class="yaml-comment"># la fiecare 15 secunde</span>
+  <span class="yaml-key">evaluation_interval</span>: <span class="yaml-str">15s</span>
+
+<span class="yaml-key">scrape_configs</span>:
+  - <span class="yaml-key">job_name</span>: <span class="yaml-str">'user-service'</span>
+    <span class="yaml-key">metrics_path</span>: <span class="yaml-str">'/actuator/prometheus'</span>
+    <span class="yaml-key">static_configs</span>:
+      - <span class="yaml-key">targets</span>: [<span class="yaml-str">'host.docker.internal:8081'</span>]
+    <span class="yaml-comment">               # ↑ din container Prometheus, mașina gazdă = host.docker.internal</span>
+
+  - <span class="yaml-key">job_name</span>: <span class="yaml-str">'admissions-service'</span>
+    <span class="yaml-key">metrics_path</span>: <span class="yaml-str">'/actuator/prometheus'</span>
+    <span class="yaml-key">static_configs</span>:
+      - <span class="yaml-key">targets</span>: [<span class="yaml-str">'host.docker.internal:8082'</span>]
+
+  - <span class="yaml-key">job_name</span>: <span class="yaml-str">'api-gateway'</span>
+    <span class="yaml-key">metrics_path</span>: <span class="yaml-str">'/actuator/prometheus'</span>
+    <span class="yaml-key">static_configs</span>:
+      - <span class="yaml-key">targets</span>: [<span class="yaml-str">'host.docker.internal:8080'</span>]</code></pre>
+
+    <h2>Metrici disponibile automat</h2>
+    <div class="metric-item">
+      <div class="name">http_server_requests_seconds_count</div>
+      <div class="desc">Numărul de request-uri HTTP procesate, grupate pe method, uri, status</div>
+    </div>
+    <div class="metric-item">
+      <div class="name">jvm_memory_used_bytes</div>
+      <div class="desc">Memorie JVM utilizată (heap, non-heap, per generație G1)</div>
+    </div>
+    <div class="metric-item">
+      <div class="name">process_cpu_usage</div>
+      <div class="desc">Procentaj CPU utilizat de procesul Java</div>
+    </div>
+    <div class="metric-item">
+      <div class="name">hikaricp_connections_active</div>
+      <div class="desc">Conexiuni active în connection pool-ul HikariCP (MySQL)</div>
+    </div>
+    <div class="metric-item">
+      <div class="name">spring_rabbitmq_listener_seconds_count</div>
+      <div class="desc">Mesaje RabbitMQ procesate</div>
+    </div>
+
+    <h2>Setup Grafana – conectare la Prometheus</h2>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <h4>Accesează Grafana</h4>
+        <p>Deschide <code>http://localhost:3000</code>. Username: <code>admin</code>, Password: <code>admin</code></p>
+      </div>
+      <div class="demo-step">
+        <h4>Adaugă Prometheus ca datasource</h4>
+        <p>Meniu stânga → Connections → Data Sources → Add data source → Prometheus → URL: <code>http://prometheus:9090</code></p>
+      </div>
+      <div class="demo-step">
+        <h4>Importă dashboard predefinit</h4>
+        <p>Dashboards → Import → ID <strong>4701</strong> (JVM Micrometer) → selectează datasource Prometheus → Import</p>
+      </div>
+      <div class="demo-step">
+        <h4>Vizualizează metrici live</h4>
+        <p>Dashboard-ul arată heap memory, CPU, request rate, GC activity – totul în timp real</p>
+      </div>
+    </div>
+
+    <h2>Query PromQL – exemple</h2>
+    <table>
+      <tr><th>Query</th><th>Ce arată</th></tr>
+      <tr><td><code>rate(http_server_requests_seconds_count[5m])</code></td><td>Request-uri pe secundă în ultimele 5 minute</td></tr>
+      <tr><td><code>jvm_memory_used_bytes{area="heap"}</code></td><td>Memorie heap utilizată curent</td></tr>
+      <tr><td><code>process_cpu_usage * 100</code></td><td>CPU usage în procente</td></tr>
+      <tr><td><code>hikaricp_connections_active</code></td><td>Conexiuni DB active</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <p><strong>Dashboard JVM recomandat:</strong> Importă Grafana dashboard ID <strong>4701</strong> – "JVM (Micrometer)" – pentru o vizualizare completă a memoriei, GC, threads și HTTP metrics dintr-un Spring Boot.</p>
+    </div>
+
+    <div class="callout info">
+      <p><strong>De ce /actuator/health dezactivează unele checks?</strong> În <code>application.yml</code> am dezactivat <code>health.mongo.enabled: false</code> și <code>health.rabbit.enabled: false</code>. Asta previne ca aplicația să apară "DOWN" dacă MongoDB sau RabbitMQ nu sunt pornite temporar în dev.</p>
+    </div>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce este Micrometer și de ce e necesar pe lângă Spring Boot Actuator?</div>
+      <div class="qa-a"><strong>Spring Boot Actuator</strong> expune endpoint-uri de management (<code>/actuator/health</code>, <code>/actuator/metrics</code>). <strong>Micrometer</strong> este un „facade" de metrici (ca SLF4J pentru logging) — colectează metricile din aplicație și le poate exporta în multiple formate. Dependința <code>micrometer-registry-prometheus</code> traduce metricile Micrometer în formatul text specific Prometheus (linii de tipul <code>metric_name{label="value"} 123.4</code>), expus la <code>/actuator/prometheus</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Care este modelul pull vs push în monitoring și ce folosește Prometheus?</div>
+      <div class="qa-a">Prometheus folosește modelul <strong>pull</strong> (scraping): Prometheus se duce activ la fiecare serviciu la intervalul de scrape (15s) și descarcă metricile. Alternativa este modelul <strong>push</strong> (ex: StatsD, InfluxDB): serviciile trimit activ metricile. Avantajul pull: Prometheus controlează rata de colectare, serviciile nu trebuie să știe de Prometheus, și detectezi automat serviciile căzute (nu mai returnează metrici).</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce metrici expune automat Spring Boot fără configurare suplimentară?</div>
+      <div class="qa-a"><strong>HTTP</strong>: <code>http_server_requests_seconds_count/sum</code> — număr și durată request-uri per endpoint. <strong>JVM</strong>: <code>jvm_memory_used_bytes</code>, <code>jvm_gc_pause_seconds</code>, <code>jvm_threads_live_threads</code>. <strong>CPU</strong>: <code>process_cpu_usage</code>. <strong>Baza de date</strong>: <code>hikaricp_connections_active/idle/pending</code> (pool HikariCP). <strong>Cache</strong>: <code>cache_gets_total</code> (hits/misses Redis). Toate sunt înregistrate automat de Spring Boot Actuator + Micrometer.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce este PromQL și dă un exemplu de query util?</div>
+      <div class="qa-a">PromQL (Prometheus Query Language) este limbajul de interogare al Prometheus. Exemple: <code>rate(http_server_requests_seconds_count[5m])</code> — request-uri pe secundă în ultimele 5 minute (funcția <code>rate</code> calculează rata per secundă dintr-un counter). <code>jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"} * 100</code> — procentaj heap utilizat. <code>histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m]))</code> — percentila 95 a timpilor de răspuns.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum configurezi Grafana să se conecteze la Prometheus?</div>
+      <div class="qa-a">1. Accesezi <code>http://localhost:3000</code> (admin/admin). 2. Meniu stânga → Connections → Data Sources → Add data source → Prometheus. 3. URL: <code>http://prometheus:9090</code> (din interiorul Docker, Grafana ajunge la Prometheus prin numele serviciului, nu localhost). 4. Save &amp; Test. Importul unui dashboard predefinit (ID <strong>4701</strong> = JVM Micrometer) oferă imediat grafice pentru heap, CPU, GC, threads, HTTP.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce dezactivăm health checks pentru MongoDB și RabbitMQ în dev?</div>
+      <div class="qa-a">Spring Boot Actuator verifică automat sănătatea tuturor dependințelor configurate. Dacă MongoDB sau RabbitMQ nu sunt pornite, <code>/actuator/health</code> returnează <code>DOWN</code>, chiar dacă restul aplicației funcționează perfect. În dev, nu pornim întotdeauna toate serviciile. Setând <code>health.mongo.enabled: false</code> și <code>health.rabbit.enabled: false</code>, serviciul apare <code>UP</code> chiar fără aceste dependințe.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce conține fișierul prometheus.yml și ce rol joacă scrape_interval?</div>
+      <div class="qa-a"><code>prometheus.yml</code> configurează ce servicii să scrape-uiască Prometheus. Fiecare <code>job</code> are un <code>job_name</code>, <code>metrics_path</code> (de obicei <code>/actuator/prometheus</code>) și <code>targets</code> (adrese host:port). <code>scrape_interval: 15s</code> = Prometheus colectează metrici la fiecare 15 secunde. Valori mai mici = rezoluție mai bună dar mai multă presiune pe servicii. În producție, 15-30s e standard. Fișierul este montat în containerul Prometheus via <code>volumes: ./prometheus.yml:/etc/prometheus/prometheus.yml</code>.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Monitoring cu Prometheus și Grafana</h2>
+
+<div class="callout" style="background:#1c0f00;border-left:4px solid #fb923c;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Docker Compose cu Prometheus și Grafana pornit (Tutorial 05). Spring Boot application rulând pe port 8081.</p>
+</div>
+
+<div style="background:#1c0f00;border:1px solid #7c2d00;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fb923c">Pasul 1 — Adaugă dependințele Actuator și Micrometer</strong>
+  <div style="margin-top:12px">
+    <p>În <code>user-service/pom.xml</code>:</p>
+    <pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;io.micrometer&lt;/groupId&gt;
+    &lt;artifactId&gt;micrometer-registry-prometheus&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0f00;border:1px solid #7c2d00;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fb923c">Pasul 2 — Configurează Actuator în application.yml</strong>
+  <div style="margin-top:12px">
+    <pre><code>management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus, refresh
+        # "prometheus" expune metricile în format Prometheus la /actuator/prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0f00;border:1px solid #7c2d00;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fb923c">Pasul 3 — Configurează prometheus.yml</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>prometheus.yml</code> în rădăcina proiectului (montat în containerul Prometheus):</p>
+    <pre><code>global:
+  scrape_interval: 15s    # colectează metrici la fiecare 15 secunde
+
+scrape_configs:
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+        # host.docker.internal = IP-ul calculatorului gazdă, vizibil din container Docker</code></pre>
+    <p>Asigură-te că în <code>docker-compose.yml</code> fișierul e montat:</p>
+    <pre><code>prometheus:
+  volumes:
+    - ./prometheus.yml:/etc/prometheus/prometheus.yml</code></pre>
+  </div>
+</div>
+
+<div style="background:#1c0f00;border:1px solid #7c2d00;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#fb923c">Pasul 4 — Importă dashboard-ul în Grafana</strong>
+  <div style="margin-top:12px">
+    <p>Deschide <strong>http://localhost:3000</strong> (admin/admin) și urmează pașii:</p>
+    <ol>
+      <li>Left sidebar → <strong>Connections</strong> → <strong>Data sources</strong> → <strong>Add data source</strong></li>
+      <li>Selectează <strong>Prometheus</strong>, URL: <code>http://prometheus:9090</code> → Save &amp; Test</li>
+      <li>Left sidebar → <strong>Dashboards</strong> → <strong>Import</strong></li>
+      <li>Introdu ID-ul <strong>19004</strong> (Spring Boot Statistics) → Load → selectează Prometheus → Import</li>
+    </ol>
+    <p>Sau dacă ai dashboard JSON propriu, plasează-l în <code>grafana/dashboards/spring-boot.json</code> și configurează provisioning-ul.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong></p>
+  <pre><code># 1. Metrici expuse de user-service:
+http://localhost:8081/actuator/prometheus
+# → pagină lungă cu sute de metrici în format text
+
+# 2. Prometheus primește date:
+http://localhost:9090/targets
+# → user-service trebuie să apară cu State: UP
+
+# 3. Grafana vizualizează:
+http://localhost:3000
+# → dashboard-ul Spring Boot afișează grafice pentru CPU, memorie, HTTP requests</code></pre>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial Monitoring &nbsp;|&nbsp; <a href="index.html" style="color:#fb923c">Toate tutorialele</a></footer>
+</body>
+</html>

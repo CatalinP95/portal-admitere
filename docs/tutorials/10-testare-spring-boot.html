@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Testare Spring Boot – MockMvc, H2, Mockito</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#134e4a,#0f766e);padding:48px 24px;text-align:center}
+    header h1{font-size:2.2rem;color:#fff;font-weight:700}
+    header p{color:#99f6e4;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#2dd4bf;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#5eead4;margin:22px 0 8px}
+    p{color:#cbd5e1;margin-bottom:14px}
+    ul,ol{color:#cbd5e1;padding-left:22px;margin-bottom:14px}
+    li{margin-bottom:6px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:22px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#7dd3fc}
+    .kw{color:#f472b6}
+    .ann{color:#34d399}
+    .str{color:#fbbf24}
+    .cmt{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .num{color:#fb923c}
+    .callout{background:#022c22;border-left:4px solid #2dd4bf;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b;background:#1c1207}
+    .callout.ok{border-color:#10b981;background:#022c22}
+    .callout.danger{border-color:#ef4444;background:#1c0607}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#5eead4;padding:11px 14px;text-align:left;font-size:.9rem;border-bottom:2px solid #334155}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem;vertical-align:top}
+    td code{font-size:.83rem;background:#0f172a;padding:2px 6px;border-radius:4px}
+    .qa{background:#022c22;border:1px solid #134e4a;border-radius:8px;padding:18px 22px;margin:14px 0}
+    .qa .q{color:#2dd4bf;font-weight:600;margin-bottom:8px}
+    .qa .a{color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:50px}
+  </style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+<header>
+  <h1>Testare Spring Boot</h1>
+  <p>@SpringBootTest, MockMvc, H2 in-memory, Mockito, @MockBean, @BeforeEach</p>
+</header>
+
+<div class="container">
+
+<h2>1. Tipuri de teste în Spring Boot</h2>
+<table>
+  <tr><th>Tip</th><th>Ce testează</th><th>Viteză</th><th>Adnotare</th></tr>
+  <tr><td>Unit Test</td><td>O singură clasă izolată, dependențele sunt mock-uri</td><td>Rapid (&lt;1ms)</td><td><code>@ExtendWith(MockitoExtension.class)</code></td></tr>
+  <tr><td>Integration Test</td><td>Fluxul complet: Controller → Service → DB</td><td>Lent (pornește Spring)</td><td><code>@SpringBootTest</code></td></tr>
+  <tr><td>Slice Test</td><td>Doar un layer (ex: doar JPA, doar MVC)</td><td>Mediu</td><td><code>@DataJpaTest</code>, <code>@WebMvcTest</code></td></tr>
+</table>
+
+<h2>2. @SpringBootTest – contextul complet</h2>
+
+<pre><code><span class="ann">@SpringBootTest</span>(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+<span class="cmt">// MOCK = simulează HTTP fără a porni serverul pe un port real</span>
+<span class="cmt">// RANDOM_PORT = pornește serverul pe un port aleator (testare reală HTTP)</span>
+<span class="cmt">// DEFINED_PORT = pornește pe portul din application.yml</span>
+<span class="cmt">// NONE = fără server (testare servicii pure)</span>
+<span class="ann">@AutoConfigureMockMvc</span>    <span class="cmt">// injectează MockMvc automat</span>
+<span class="ann">@ActiveProfiles</span>(<span class="str">"test"</span>)  <span class="cmt">// încarcă application-test.yml (H2 în loc de MySQL)</span>
+<span class="kw">class</span> <span class="type">UserProfileControllerTest</span> {
+
+    <span class="ann">@Autowired</span> <span class="kw">private</span> <span class="type">MockMvc</span> mockMvc;
+    <span class="ann">@Autowired</span> <span class="kw">private</span> <span class="type">JwtUtil</span> jwtUtil;
+    <span class="ann">@Autowired</span> <span class="kw">private</span> <span class="type">UserRepository</span> userRepository;
+    <span class="ann">@Autowired</span> <span class="kw">private</span> <span class="type">UserProfileRepository</span> userProfileRepository;
+    <span class="ann">@Autowired</span> <span class="kw">private</span> <span class="type">PasswordEncoder</span> passwordEncoder;
+    <span class="ann">@Autowired</span> <span class="kw">private</span> <span class="type">ObjectMapper</span> objectMapper;
+    <span class="ann">@MockBean</span> <span class="kw">private</span> <span class="type">AuditLogService</span> auditLogService;
+    <span class="cmt">// @MockBean înlocuiește AuditLogService cu un mock Mockito în contextul Spring</span>
+}</code></pre>
+
+<h2>3. H2 – baza de date in-memory pentru teste</h2>
+<p>H2 este o bază de date Java care rulează în memorie — nu necesită instalare, pornește instant, se resetează între teste.</p>
+
+<pre><code><span class="cmt"># application-test.yml</span>
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    <span class="cmt"># mem:testdb = in-memory, DB_CLOSE_DELAY=-1 = nu se închide</span>
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:                   <span class="cmt"># parola goală pentru H2</span>
+  jpa:
+    hibernate:
+      ddl-auto: create          <span class="cmt"># recreează schema înainte de teste</span>
+    database-platform: org.hibernate.dialect.H2Dialect
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  cache:
+    type: none                  <span class="cmt"># dezactivăm Redis cache</span></code></pre>
+
+<div class="callout">
+  <p><strong>De ce excludem MongoDB, Redis, RabbitMQ în teste?</strong><br/>
+  Aceste servicii externe nu rulează în mediul de CI/test. Dacă le lăsăm active, Spring încearcă să se conecteze și testul eșuează. Le excludem din autoconfigurare și mock-uim serviciile care le folosesc (ex: AuditLogService).</p>
+</div>
+
+<h2>4. @BeforeEach – pregătirea datelor de test</h2>
+
+<pre><code><span class="kw">private</span> String studentToken;
+<span class="kw">private</span> String adminToken;
+<span class="kw">private</span> Long studentId;
+<span class="kw">private</span> Long adminId;
+
+<span class="ann">@BeforeEach</span>
+<span class="kw">void</span> setUp() {
+    <span class="cmt">// IMPORTANT: ordinea de ștergere respectă foreign keys!</span>
+    <span class="cmt">// Mai întâi ștergem entitățile cu FK</span>
+    userProfileRepository.deleteAll();
+    refreshTokenRepository.deleteAll();
+    <span class="cmt">// Abia apoi ștergem userul (referenced de celelalte)</span>
+    userRepository.deleteAll();
+
+    <span class="cmt">// Creăm un user student</span>
+    <span class="type">User</span> student = <span class="kw">new</span> <span class="type">User</span>();
+    student.setUsername(<span class="str">"student"</span>);
+    student.setEmail(<span class="str">"student@test.com"</span>);
+    student.setPassword(passwordEncoder.encode(<span class="str">"student123"</span>));
+    <span class="cmt">// Parola trebuie hash-uită — Spring Security compară hash-uri, nu text plain</span>
+    student.setRole(<span class="type">Role</span>.STUDENT);
+    student.setEnabled(<span class="kw">true</span>);
+    studentId = userRepository.save(student).getId();
+
+    <span class="cmt">// Generăm JWT pentru test (fără login real)</span>
+    studentToken = jwtUtil.generateToken(String.valueOf(studentId), <span class="str">"STUDENT"</span>);
+
+    <span class="type">User</span> admin = <span class="kw">new</span> <span class="type">User</span>();
+    admin.setUsername(<span class="str">"admin"</span>);
+    admin.setEmail(<span class="str">"admin@test.com"</span>);
+    admin.setPassword(passwordEncoder.encode(<span class="str">"admin123"</span>));
+    admin.setRole(<span class="type">Role</span>.ADMIN);
+    admin.setEnabled(<span class="kw">true</span>);
+    adminId = userRepository.save(admin).getId();
+    adminToken = jwtUtil.generateToken(String.valueOf(adminId), <span class="str">"ADMIN"</span>);
+}</code></pre>
+
+<h2>5. MockMvc – testarea REST endpoint-urilor</h2>
+
+<h3>5.1 Structura unui test MockMvc</h3>
+<pre><code><span class="ann">@Test</span>
+<span class="kw">void</span> saveProfile_asStudent_returns200() <span class="kw">throws</span> Exception {
+    <span class="cmt">// Pregătim request body</span>
+    <span class="type">UserProfileRequest</span> req = <span class="kw">new</span> <span class="type">UserProfileRequest</span>();
+    req.setFirstName(<span class="str">"Ion"</span>);
+    req.setLastName(<span class="str">"Popescu"</span>);
+    req.setCnp(<span class="str">"1990101123456"</span>);
+    req.setPhone(<span class="str">"+40722123456"</span>);
+
+    mockMvc.perform(
+            put(<span class="str">"/api/profile"</span>)                                     <span class="cmt">// metoda HTTP + URL</span>
+                .header(<span class="str">"Authorization"</span>, <span class="str">"Bearer "</span> + studentToken)    <span class="cmt">// JWT token</span>
+                .contentType(<span class="type">MediaType</span>.APPLICATION_JSON)               <span class="cmt">// Content-Type header</span>
+                .content(objectMapper.writeValueAsString(req))          <span class="cmt">// body serializat JSON</span>
+        )
+        .andExpect(status().isOk())                                      <span class="cmt">// HTTP 200</span>
+        .andExpect(jsonPath(<span class="str">"$.firstName"</span>).value(<span class="str">"Ion"</span>))              <span class="cmt">// câmp în JSON response</span>
+        .andExpect(jsonPath(<span class="str">"$.lastName"</span>).value(<span class="str">"Popescu"</span>))
+        .andExpect(jsonPath(<span class="str">"$.cnp"</span>).value(<span class="str">"1990101123456"</span>));
+}</code></pre>
+
+<h3>5.2 Metode MockMvc disponibile</h3>
+<table>
+  <tr><th>Metodă</th><th>Utilizare</th></tr>
+  <tr><td><code>get("/path")</code></td><td>HTTP GET request</td></tr>
+  <tr><td><code>post("/path")</code></td><td>HTTP POST request</td></tr>
+  <tr><td><code>put("/path")</code></td><td>HTTP PUT request</td></tr>
+  <tr><td><code>delete("/path")</code></td><td>HTTP DELETE request</td></tr>
+  <tr><td><code>patch("/path")</code></td><td>HTTP PATCH request</td></tr>
+  <tr><td><code>.header(name, value)</code></td><td>Adaugă header la request</td></tr>
+  <tr><td><code>.param(name, value)</code></td><td>Adaugă query param (?name=value)</td></tr>
+  <tr><td><code>.contentType(type)</code></td><td>Setează Content-Type</td></tr>
+  <tr><td><code>.content(body)</code></td><td>Setează request body</td></tr>
+</table>
+
+<h3>5.3 Assertion-uri MockMvc</h3>
+<table>
+  <tr><th>Assertion</th><th>Ce verifică</th></tr>
+  <tr><td><code>status().isOk()</code></td><td>HTTP 200</td></tr>
+  <tr><td><code>status().isCreated()</code></td><td>HTTP 201</td></tr>
+  <tr><td><code>status().isBadRequest()</code></td><td>HTTP 400</td></tr>
+  <tr><td><code>status().isForbidden()</code></td><td>HTTP 403</td></tr>
+  <tr><td><code>status().isNotFound()</code></td><td>HTTP 404</td></tr>
+  <tr><td><code>jsonPath("$.field").value("val")</code></td><td>Câmpul JSON din response egal cu valoarea</td></tr>
+  <tr><td><code>jsonPath("$.list[0].name").value("x")</code></td><td>Primul element din array</td></tr>
+  <tr><td><code>jsonPath("$.list.length()").value(3)</code></td><td>Array-ul are 3 elemente</td></tr>
+  <tr><td><code>content().contentType(MediaType.APPLICATION_JSON)</code></td><td>Content-Type din response</td></tr>
+  <tr><td><code>content().json("{\"id\":1}")</code></td><td>Response body egal cu JSON specificat</td></tr>
+</table>
+
+<h2>6. @MockBean vs @Mock</h2>
+<table>
+  <tr><th></th><th>@Mock (Mockito)</th><th>@MockBean (Spring Boot Test)</th></tr>
+  <tr><td>Context</td><td>Fără Spring, test pur Mockito</td><td>Înlocuiește bean-ul în contextul Spring</td></tr>
+  <tr><td>Unde se folosește</td><td><code>@ExtendWith(MockitoExtension.class)</code></td><td><code>@SpringBootTest</code></td></tr>
+  <tr><td>Injecție</td><td><code>@InjectMocks</code> injectează în obiect</td><td>Spring injectează automat</td></tr>
+  <tr><td>Scop</td><td>Unit tests izolate</td><td>Integration tests cu Spring context</td></tr>
+</table>
+
+<pre><code><span class="cmt">// Unit test cu @Mock — fără Spring</span>
+<span class="ann">@ExtendWith</span>(<span class="type">MockitoExtension</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="type">AuthServiceTest</span> {
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">UserRepository</span> userRepository;
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">JwtUtil</span> jwtUtil;
+    <span class="ann">@InjectMocks</span> <span class="kw">private</span> <span class="type">AuthService</span> authService;
+    <span class="cmt">// @InjectMocks creează AuthService și injectează mock-urile</span>
+}
+
+<span class="cmt">// Integration test cu @MockBean — cu Spring context</span>
+<span class="ann">@SpringBootTest</span>
+<span class="ann">@ActiveProfiles</span>(<span class="str">"test"</span>)
+<span class="kw">class</span> <span class="type">ProfileControllerTest</span> {
+    <span class="ann">@MockBean</span> <span class="kw">private</span> <span class="type">AuditLogService</span> auditLogService;
+    <span class="cmt">// Spring înlocuiește AuditLogService real cu un mock în tot contextul</span>
+}</code></pre>
+
+<h2>7. Mockito – cum mock-uim metode</h2>
+
+<pre><code><span class="cmt">// when().thenReturn() — stub pentru metode care returnează ceva</span>
+when(userRepository.findByUsername(<span class="str">"ion"</span>))
+    .thenReturn(Optional.of(user));
+
+when(jwtUtil.generateToken(<span class="str">"1"</span>, <span class="str">"STUDENT"</span>))
+    .thenReturn(<span class="str">"mock-token-123"</span>);
+
+<span class="cmt">// when().thenThrow() — stub pentru excepții</span>
+when(authenticationManager.authenticate(any()))
+    .thenThrow(<span class="kw">new</span> BadCredentialsException(<span class="str">"Bad credentials"</span>));
+
+<span class="cmt">// doNothing().when() — stub pentru metode void</span>
+doNothing().when(refreshTokenRepository).revokeAllByUser(any());
+
+<span class="cmt">// verify() — verificăm că o metodă a fost apelată</span>
+verify(userRepository, times(<span class="num">1</span>)).save(any(<span class="type">User</span>.<span class="kw">class</span>));
+verify(userRepository, never()).delete(any());
+
+<span class="cmt">// ArgumentMatchers — matchers pentru argumente</span>
+when(userRepository.existsByUsername(anyString())).thenReturn(<span class="kw">false</span>);
+when(repo.findById(eq(<span class="num">1L</span>))).thenReturn(Optional.of(user));</code></pre>
+
+<h2>8. Unit Test complet – AuthServiceTest</h2>
+
+<pre><code><span class="ann">@ExtendWith</span>(<span class="type">MockitoExtension</span>.<span class="kw">class</span>)
+<span class="kw">class</span> <span class="type">AuthServiceTest</span> {
+
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">UserRepository</span> userRepository;
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">RefreshTokenRepository</span> refreshTokenRepository;
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">PasswordEncoder</span> passwordEncoder;
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">JwtUtil</span> jwtUtil;
+    <span class="ann">@Mock</span> <span class="kw">private</span> <span class="type">AuthenticationManager</span> authenticationManager;
+
+    <span class="ann">@InjectMocks</span>
+    <span class="kw">private</span> <span class="type">AuthService</span> authService;
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> register_success() {
+        <span class="type">RegisterRequest</span> req = <span class="kw">new</span> <span class="type">RegisterRequest</span>();
+        req.setUsername(<span class="str">"ion"</span>);
+        req.setEmail(<span class="str">"ion@test.com"</span>);
+        req.setPassword(<span class="str">"pass123"</span>);
+
+        <span class="cmt">// Stub-uri</span>
+        when(userRepository.existsByUsername(<span class="str">"ion"</span>)).thenReturn(<span class="kw">false</span>);
+        when(userRepository.existsByEmail(<span class="str">"ion@test.com"</span>)).thenReturn(<span class="kw">false</span>);
+        when(passwordEncoder.encode(<span class="str">"pass123"</span>)).thenReturn(<span class="str">"hash123"</span>);
+
+        <span class="type">User</span> saved = <span class="kw">new</span> <span class="type">User</span>();
+        saved.setId(<span class="num">1L</span>);
+        saved.setRole(<span class="type">Role</span>.STUDENT);
+        when(userRepository.save(any())).thenReturn(saved);
+        when(jwtUtil.generateToken(<span class="str">"1"</span>, <span class="str">"STUDENT"</span>)).thenReturn(<span class="str">"access-token"</span>);
+        when(jwtUtil.generateRefreshToken(<span class="str">"1"</span>, <span class="str">"STUDENT"</span>)).thenReturn(<span class="str">"refresh-token"</span>);
+        when(refreshTokenRepository.save(any())).thenReturn(<span class="kw">new</span> <span class="type">RefreshToken</span>());
+
+        <span class="cmt">// Execuție</span>
+        <span class="type">AuthResponse</span> response = authService.register(req);
+
+        <span class="cmt">// Verificări</span>
+        assertNotNull(response);
+        assertEquals(<span class="str">"access-token"</span>, response.getAccessToken());
+        assertEquals(<span class="str">"STUDENT"</span>, response.getRole());
+        verify(userRepository, times(<span class="num">1</span>)).save(any());
+    }
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> register_duplicateUsername_throws() {
+        <span class="type">RegisterRequest</span> req = <span class="kw">new</span> <span class="type">RegisterRequest</span>();
+        req.setUsername(<span class="str">"existing"</span>);
+
+        when(userRepository.existsByUsername(<span class="str">"existing"</span>)).thenReturn(<span class="kw">true</span>);
+
+        assertThrows(<span class="type">IllegalArgumentException</span>.<span class="kw">class</span>, () -> authService.register(req));
+        verify(userRepository, never()).save(any());
+        <span class="cmt">// verify că save NU a fost apelat</span>
+    }
+}</code></pre>
+
+<h2>9. ReflectionTestUtils – testarea claselor cu @Value</h2>
+<p>Când o clasă folosește <code>@Value</code> și nu vrem să pornim Spring complet, putem seta câmpurile direct prin reflexie.</p>
+
+<pre><code><span class="cmt">// JwtUtilTest — fără Spring context, fără @RefreshScope issues</span>
+<span class="kw">class</span> <span class="type">JwtUtilTest</span> {
+    <span class="kw">private</span> <span class="type">JwtUtil</span> jwtUtil;
+
+    <span class="ann">@BeforeEach</span>
+    <span class="kw">void</span> setUp() {
+        jwtUtil = <span class="kw">new</span> <span class="type">JwtUtil</span>();  <span class="cmt">// instanțăm direct, fără Spring</span>
+        <span class="cmt">// Setăm câmpurile private cu ReflectionTestUtils</span>
+        ReflectionTestUtils.setField(jwtUtil, <span class="str">"secret"</span>,
+            <span class="str">"404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"</span>);
+        ReflectionTestUtils.setField(jwtUtil, <span class="str">"expiration"</span>, <span class="num">86400000L</span>);
+        ReflectionTestUtils.setField(jwtUtil, <span class="str">"refreshExpiration"</span>, <span class="num">604800000L</span>);
+    }
+
+    <span class="ann">@Test</span>
+    <span class="kw">void</span> generateToken_isValid() {
+        String token = jwtUtil.generateToken(<span class="str">"42"</span>, <span class="str">"STUDENT"</span>);
+        assertTrue(jwtUtil.isTokenValid(token));
+    }
+}</code></pre>
+
+<h2>10. Tipare comune de teste</h2>
+
+<h3>Test pentru autorizare (403)</h3>
+<pre><code><span class="ann">@Test</span>
+<span class="kw">void</span> getProfile_noToken_returns403() <span class="kw">throws</span> Exception {
+    mockMvc.perform(get(<span class="str">"/api/profile"</span>))  <span class="cmt">// fără header Authorization</span>
+            .andExpect(status().isForbidden());
+}
+
+<span class="ann">@Test</span>
+<span class="kw">void</span> getAllUsers_asStudent_returns403() <span class="kw">throws</span> Exception {
+    mockMvc.perform(get(<span class="str">"/api/users"</span>)
+                    .header(<span class="str">"Authorization"</span>, <span class="str">"Bearer "</span> + studentToken))
+            .andExpect(status().isForbidden());
+            <span class="cmt">// student nu are acces la /api/users (doar ADMIN)</span>
+}</code></pre>
+
+<h3>Test pentru validare (400)</h3>
+<pre><code><span class="ann">@Test</span>
+<span class="kw">void</span> saveProfile_invalidCnp_returns400() <span class="kw">throws</span> Exception {
+    <span class="type">UserProfileRequest</span> req = <span class="kw">new</span> <span class="type">UserProfileRequest</span>();
+    req.setCnp(<span class="str">"123"</span>);  <span class="cmt">// CNP invalid (nu are 13 cifre)</span>
+
+    mockMvc.perform(put(<span class="str">"/api/profile"</span>)
+                    .header(<span class="str">"Authorization"</span>, <span class="str">"Bearer "</span> + studentToken)
+                    .contentType(<span class="type">MediaType</span>.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isBadRequest());
+            <span class="cmt">// @Valid pe controller returnează 400 pentru CNP invalid</span>
+}</code></pre>
+
+<h2>11. Întrebări posibile la examen</h2>
+
+<div class="qa">
+  <div class="q">Q: Care este diferența dintre @Mock și @MockBean?</div>
+  <div class="a">@Mock (Mockito pură) creează un mock fără Spring — se folosește în unit tests cu @ExtendWith(MockitoExtension.class). @InjectMocks injectează mock-urile în clasa testată. @MockBean (Spring Boot Test) înlocuiește bean-ul real din contextul Spring cu un mock Mockito — se folosește în @SpringBootTest. Dacă un bean depinde de un serviciu extern (MongoDB, Redis), @MockBean pe acel serviciu previne erorile de context.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce folosim H2 în loc de MySQL pentru teste?</div>
+  <div class="a">H2 este o bază de date in-memory (rulează în JVM, fără instalare). Avantaje: pornește instant, se izolează între teste (ddl-auto: create recreează schema), nu necesită conexiune la un server extern, funcționează în CI/CD fără setup. Dezavantaj: dialectul diferă de MySQL (unele funcții SQL specifice MySQL nu funcționează în H2). Pentru teste care necesită funcții MySQL specifice, poți folosi Testcontainers (MySQL real în Docker).</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @BeforeEach și de ce e importantă ordinea de ștergere?</div>
+  <div class="a">@BeforeEach rulează înainte de fiecare test @Test, asigurând o stare curată a bazei de date. Ordinea de ștergere contează din cauza foreign key constraints: dacă UserProfile are user_id FK care referențiază Users, nu poți șterge un User dacă există un UserProfile asociat. Soluție: ștergi mai întâi entitățile cu FK (userProfileRepository.deleteAll(), refreshTokenRepository.deleteAll()) și abia apoi userul.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce este MockMvc și cum funcționează?</div>
+  <div class="a">MockMvc simulează requesturi HTTP fără a porni serverul real. Testele trimit requesturi fake și verifică răspunsurile. Avantaj față de un server real: mai rapid, context izolat, nu ocupă port. @AutoConfigureMockMvc configurează MockMvc automat cu toată configurarea de Security. Testele cu MockMvc sunt integration tests reale (folosesc contextul Spring complet, baza de date H2 reală).</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce excludem MongoAutoConfiguration și RedisAutoConfiguration în application-test.yml?</div>
+  <div class="a">MongoDB și Redis sunt servicii externe care nu rulează în mediul de test. Dacă autoconfigurarea este activă, Spring încearcă să se conecteze la ele și aruncă excepție dacă nu găsește conexiune. Excluzând autoconfigurarea, beans-urile MongoTemplate și RedisTemplate nu sunt create. Dar AuditLogRepository (MongoRepository) are nevoie de MongoTemplate — de aceea adăugăm și MongoRepositoriesAutoConfiguration în excluderi, și mock-uim AuditLogService cu @MockBean.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce este ReflectionTestUtils.setField și când îl folosești?</div>
+  <div class="a">ReflectionTestUtils este o utilitate Spring Test care permite setarea câmpurilor private prin reflexie, fără Spring context. Se folosește când vrei să testezi o clasă care are @Value dar nu vrei să pornești Spring complet (ex: JwtUtil cu @RefreshScope — Spring Cloud scope-ul nu e disponibil în contextul minimal). Alternativa este field injection cu @Autowired sau constructor injection care permite testare directă.</div>
+</div>
+
+</div>
+
+<div class="container">
+<h2>12. Implementare pas cu pas — Testare Spring Boot</h2>
+
+<div class="callout" style="background:#042f2e;border-left:4px solid #2dd4bf;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> spring-boot-starter-test în pom.xml (inclus implicit). spring-security-test pentru teste cu autentificare.</p>
+</div>
+
+<div style="background:#042f2e;border:1px solid #134e4a;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#2dd4bf">Pasul 1 — Configurează application-test.yml</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>src/test/resources/application-test.yml</code> — folosește H2 în loc de MySQL:</p>
+    <pre><code>spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop   # recreează schema la fiecare rulare de teste
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+  cache:
+    type: none   # dezactivează Redis cache în teste
+
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000
+  refresh-expiration: 604800000</code></pre>
+    <p>Excluderile sunt necesare deoarece H2 nu suportă RabbitMQ/MongoDB/Redis — Spring încearcă să se conecteze la startup și testele eșuează fără ele.</p>
+  </div>
+</div>
+
+<div style="background:#042f2e;border:1px solid #134e4a;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#2dd4bf">Pasul 2 — Adaugă dependința spring-security-test</strong>
+  <div style="margin-top:12px">
+    <pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.security&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-security-test&lt;/artifactId&gt;
+    &lt;scope&gt;test&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+  </div>
+</div>
+
+<div style="background:#042f2e;border:1px solid #134e4a;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#2dd4bf">Pasul 3 — Creează clasa de test de bază</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>src/test/java/com/campus/userservice/UserControllerTest.java</code>:</p>
+    <pre><code>@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")   // folosește application-test.yml
+class UserControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    private String adminToken;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();   // curăță DB înainte de fiecare test
+
+        // Creează un user ADMIN și generează token JWT pentru el
+        User admin = new User();
+        admin.setUsername("admin");
+        admin.setPassword(new BCryptPasswordEncoder().encode("pass"));
+        admin.setEmail("admin@test.com");
+        admin.setRole(Role.ADMIN);
+        admin = userRepository.save(admin);
+
+        adminToken = jwtUtil.generateToken(admin.getId().toString(), "ADMIN");
+    }
+
+    @Test
+    void getUsers_asAdmin_returns200() throws Exception {
+        mockMvc.perform(get("/api/users")
+                .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void getUsers_withoutToken_returns401() throws Exception {
+        mockMvc.perform(get("/api/users"))
+                .andExpect(status().isUnauthorized());
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#042f2e;border:1px solid #134e4a;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#2dd4bf">Pasul 4 — Rulează testele</strong>
+  <div style="margin-top:12px">
+    <p>Din VS Code: click dreapta pe clasa de test → <strong>Run Tests</strong>. Sau din terminal:</p>
+    <pre><code>cd user-service
+mvn test -B
+
+# Rulează un singur test
+mvn test -B -Dtest=UserControllerTest#getUsers_asAdmin_returns200
+
+# Generează raportul JaCoCo după teste
+# Raportul apare la: target/site/jacoco/index.html</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> Ieșirea din terminal trebuie să arate:</p>
+  <pre><code>[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS</code></pre>
+  <p>Dacă apare <code>Connection refused: localhost:5672</code> (RabbitMQ), înseamnă că excluderea RabbitAutoConfiguration lipsește din application-test.yml.</p>
+</div>
+</div>
+
+<footer>Portal Admitere – Tutorial 10: Testare Spring Boot &nbsp;|&nbsp; <a href="index.html" style="color:#2dd4bf">Toate tutorialele</a></footer>
+</body>
+</html>

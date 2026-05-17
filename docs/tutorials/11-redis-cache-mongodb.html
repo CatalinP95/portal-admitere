@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Redis Cache + MongoDB AuditLog – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.8}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#1e3a5f,#4a1d96);padding:48px 24px;text-align:center}
+    header h1{font-size:2.2rem;color:#fff;font-weight:700}
+    header p{color:#c4b5fd;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.4rem;color:#a78bfa;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid #1e293b}
+    h3{font-size:1.1rem;color:#c4b5fd;margin:22px 0 8px}
+    p{color:#cbd5e1;margin-bottom:14px}
+    ul,ol{color:#cbd5e1;padding-left:22px;margin-bottom:14px}
+    li{margin-bottom:6px}
+    pre{background:#020617;border:1px solid #334155;border-radius:8px;padding:22px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#7dd3fc}
+    .kw{color:#f472b6}
+    .ann{color:#34d399}
+    .str{color:#fbbf24}
+    .cmt{color:#475569;font-style:italic}
+    .type{color:#a78bfa}
+    .num{color:#fb923c}
+    .callout{background:#1e1b4b;border-left:4px solid #a78bfa;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b;background:#1c1207}
+    .callout.ok{border-color:#10b981;background:#022c22}
+    .callout.redis{border-color:#ef4444;background:#1c0607}
+    .callout.mongo{border-color:#22d3ee;background:#0c2230}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    .callout strong{color:#e2e8f0}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#c4b5fd;padding:11px 14px;text-align:left;font-size:.9rem;border-bottom:2px solid #334155}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem;vertical-align:top}
+    td code{font-size:.83rem;background:#0f172a;padding:2px 6px;border-radius:4px}
+    .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:20px 0}
+    .step{background:#1e1b4b;color:#c4b5fd;padding:10px 16px;border-radius:8px;font-size:.85rem;font-weight:600;border:1px solid #312e81}
+    .step.db{background:#052e16;color:#86efac;border-color:#166534}
+    .step.cache{background:#1c0607;color:#fca5a5;border-color:#7f1d1d}
+    .arrow{color:#a78bfa;font-size:1.5rem;font-weight:bold}
+    .qa{background:#1e1b4b;border:1px solid #312e81;border-radius:8px;padding:18px 22px;margin:14px 0}
+    .qa .q{color:#a78bfa;font-weight:600;margin-bottom:8px}
+    .qa .a{color:#cbd5e1;font-size:.93rem;line-height:1.7}
+    footer{text-align:center;padding:32px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:50px}
+  </style>
+</head>
+<body>
+<div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+<header>
+  <h1>Redis Cache + MongoDB AuditLog</h1>
+  <p>@Cacheable, @CacheEvict, @EnableCaching, @Document, @Async, performance demo</p>
+</header>
+
+<div class="container">
+
+<h2>1. Ce este Redis și de ce îl folosim?</h2>
+<p>Redis (Remote Dictionary Server) este o bază de date in-memory de tip key-value. Datele sunt stocate în RAM, nu pe disc, deci accesul este extrem de rapid (microsecunde față de milisecunde la MySQL).</p>
+
+<table>
+  <tr><th>Caracteristică</th><th>MySQL</th><th>Redis</th></tr>
+  <tr><td>Stocare</td><td>Disc (HDD/SSD)</td><td>RAM (memorie)</td></tr>
+  <tr><td>Viteză</td><td>1-100ms</td><td>0.1-1ms</td></tr>
+  <tr><td>Structuri de date</td><td>Tabele relaționale</td><td>String, Hash, List, Set, Sorted Set</td></tr>
+  <tr><td>Persistență</td><td>Permanentă</td><td>Opțională (RDB/AOF)</td></tr>
+  <tr><td>Caz de utilizare</td><td>Date principale ale aplicației</td><td>Cache, sesiuni, rate limiting, queues</td></tr>
+</table>
+
+<div class="callout redis">
+  <p><strong>Use case în proiect:</strong> Cachează profilurile utilizatorilor. La prima accesare a <code>GET /api/profile/1</code>, profilul se încarcă din MySQL și se salvează în Redis cu TTL 10 minute. Apelurile următoare servesc din Redis — fără query SQL.</p>
+</div>
+
+<h2>2. Configurare Redis în Spring Boot</h2>
+
+<pre><code><span class="cmt"># application.yml</span>
+spring:
+  data:
+    redis:
+      host: localhost
+      port: <span class="num">6379</span>         <span class="cmt"># portul standard Redis</span>
+  cache:
+    type: redis          <span class="cmt"># Spring Cache să folosească Redis</span>
+    redis:
+      time-to-live: <span class="num">600000</span>  <span class="cmt"># TTL = 10 minute (ms) — după acest timp, cheia dispare automat</span></code></pre>
+
+<pre><code><span class="cmt">// UserServiceApplication.java</span>
+<span class="ann">@SpringBootApplication</span>
+<span class="ann">@EnableCaching</span>   <span class="cmt">// OBLIGATORIU pentru a activa @Cacheable/@CacheEvict</span>
+<span class="kw">public class</span> <span class="type">UserServiceApplication</span> {
+    <span class="kw">public static void</span> main(String[] args) {
+        SpringApplication.run(<span class="type">UserServiceApplication</span>.<span class="kw">class</span>, args);
+    }
+}</code></pre>
+
+<h2>3. @Cacheable – citire din cache</h2>
+
+<pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">UserProfileService</span> {
+
+    <span class="ann">@Cacheable</span>(value = <span class="str">"profiles"</span>, key = <span class="str">"#userId"</span>)
+    <span class="kw">public</span> <span class="type">UserProfileDto</span> getByUserId(Long userId) {
+        log.info(<span class="str">"Cache MISS — loading profile from DB for user {}"</span>, userId);
+        <span class="cmt">// Această metodă se execută DOAR la cache miss</span>
+        <span class="cmt">// La cache hit, Spring returnează direct din Redis fără a intra în metodă</span>
+        auditLogService.log(userId, <span class="str">"READ"</span>, <span class="str">"UserProfile"</span>, <span class="str">"Loaded profile for user "</span> + userId);
+        <span class="kw">return</span> userProfileRepository.findByUserId(userId)
+                .map(<span class="type">UserProfileDto</span>::from)
+                .orElseThrow(() -> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Profile not found: "</span> + userId));
+    }
+}</code></pre>
+
+<h3>Cum funcționează @Cacheable pas cu pas</h3>
+<div class="flow">
+  <div class="step">GET /api/profile/1</div>
+  <span class="arrow">→</span>
+  <div class="step cache">Spring verifică Redis: cheia "profiles::1"</div>
+  <span class="arrow">→</span>
+  <div class="step cache">MISS: nu există în Redis</div>
+  <span class="arrow">→</span>
+  <div class="step db">Execută metoda → query MySQL</div>
+  <span class="arrow">→</span>
+  <div class="step cache">Salvează rezultat în Redis cu TTL 10min</div>
+  <span class="arrow">→</span>
+  <div class="step">Returnează răspuns</div>
+</div>
+<div class="flow">
+  <div class="step">GET /api/profile/1 (a doua oară)</div>
+  <span class="arrow">→</span>
+  <div class="step cache">Spring verifică Redis: cheia "profiles::1"</div>
+  <span class="arrow">→</span>
+  <div class="step cache">HIT: există în Redis!</div>
+  <span class="arrow">→</span>
+  <div class="step">Returnează direct din Redis (fără MySQL)</div>
+</div>
+
+<h2>4. @CacheEvict – invalidarea cache-ului</h2>
+
+<pre><code><span class="cmt">// Când profilul se modifică, ștergem cache-ul ca să nu servim date vechi</span>
+<span class="ann">@CacheEvict</span>(value = <span class="str">"profiles"</span>, key = <span class="str">"#userId"</span>)
+<span class="kw">public</span> <span class="type">UserProfileDto</span> save(Long userId, <span class="type">UserProfileRequest</span> request) {
+    <span class="cmt">// Înainte de execuție: șterge cheia "profiles::userId" din Redis</span>
+    <span class="cmt">// Astfel, apelul următor de getByUserId va fi cache miss → date fresh din DB</span>
+    ...
+}
+
+<span class="cmt">// Metodă dedicată pentru evict manual (folosită în /perf demo)</span>
+<span class="ann">@CacheEvict</span>(value = <span class="str">"profiles"</span>, key = <span class="str">"#userId"</span>)
+<span class="kw">public void</span> evictCache(Long userId) {
+    log.info(<span class="str">"Cache evicted for user {}"</span>, userId);
+    <span class="cmt">// Metoda goală — adnotarea @CacheEvict face toată munca</span>
+}
+
+<span class="cmt">// @CacheEvict pe toate cheile din cache (atunci când nu știi care)</span>
+<span class="ann">@CacheEvict</span>(value = <span class="str">"profiles"</span>, allEntries = <span class="kw">true</span>)
+<span class="kw">public void</span> clearAllProfiles() { ... }</code></pre>
+
+<h2>5. Serializare în Redis – de ce avem nevoie de Serializable</h2>
+
+<pre><code><span class="cmt">// UserProfileDto.java — trebuie să implementeze Serializable</span>
+<span class="kw">public class</span> <span class="type">UserProfileDto</span> <span class="kw">implements</span> Serializable {
+
+    <span class="kw">private static final long</span> serialVersionUID = <span class="num">1L</span>;
+    <span class="cmt">// serialVersionUID identifică versiunea clasei la deserializare</span>
+    <span class="cmt">// Dacă modifici clasa, incrementează serialVersionUID altfel</span>
+    <span class="cmt">// deserializarea eșuează cu InvalidClassException</span>
+
+    <span class="kw">private</span> Long id;
+    <span class="kw">private</span> String firstName;
+    <span class="kw">private</span> String lastName;
+    ...
+}</code></pre>
+
+<div class="callout warn">
+  <p><strong>De ce Serializable?</strong> Spring Cache (Redis) serializează obiectul în bytes pentru stocare. Fără Serializable, obții <code>NotSerializableException</code>. Redis poate stoca orice obiect serializabil. Alternative: Jackson (JSON serialization) sau Kryo, dar Spring Boot implicit folosește Java serialization.</p>
+</div>
+
+<h2>6. Performance Demo – cache vs DB</h2>
+
+<pre><code><span class="cmt">// UserProfileController.java — endpoint demo</span>
+<span class="ann">@GetMapping</span>(<span class="str">"/{userId}/perf"</span>)
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+<span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;Map&lt;String, Object&gt;&gt; perfDemo(<span class="ann">@PathVariable</span> Long userId) {
+
+    <span class="cmt">// Prima măsurătoare: din cache (dacă există)</span>
+    <span class="kw">long</span> t1 = System.currentTimeMillis();
+    userProfileService.getByUserId(userId);
+    <span class="kw">long</span> cached = System.currentTimeMillis() - t1;
+
+    <span class="cmt">// Invalidăm cache-ul</span>
+    userProfileService.evictCache(userId);
+
+    <span class="cmt">// A doua măsurătoare: forțat din DB (cache miss)</span>
+    <span class="kw">long</span> t2 = System.currentTimeMillis();
+    userProfileService.getByUserId(userId);
+    <span class="kw">long</span> fromDb = System.currentTimeMillis() - t2;
+
+    <span class="kw">return</span> ResponseEntity.ok(Map.of(
+        <span class="str">"cache_ms"</span>, cached,
+        <span class="str">"db_ms"</span>, fromDb,
+        <span class="str">"speedup"</span>, fromDb > <span class="num">0</span> ? (<span class="kw">double</span>) fromDb / cached : <span class="str">"N/A"</span>
+    ));
+}
+<span class="cmt">// Rezultat real din proiect: cache_ms=5, db_ms=30018, speedup=6003</span></code></pre>
+
+<h2>7. Ce este MongoDB și de ce îl folosim pentru AuditLog?</h2>
+<p>MongoDB este o bază de date NoSQL orientată pe documente (JSON-like). Documentele sunt flexibile — nu au schema fixă ca tabelele SQL.</p>
+
+<table>
+  <tr><th>Caracteristică</th><th>MySQL</th><th>MongoDB</th></tr>
+  <tr><td>Model date</td><td>Tabele, rânduri, coloane</td><td>Colecții, documente (JSON)</td></tr>
+  <tr><td>Schema</td><td>Fixă (ALTER TABLE)</td><td>Flexibilă (orice câmpuri)</td></tr>
+  <tr><td>Query language</td><td>SQL</td><td>MongoDB Query Language (MQL)</td></tr>
+  <tr><td>Relații</td><td>JOIN între tabele</td><td>Embedding sau referințe</td></tr>
+  <tr><td>Cazuri de utilizare</td><td>Date structurate, tranzacții</td><td>Logs, analytics, date variabile</td></tr>
+</table>
+
+<div class="callout mongo">
+  <p><strong>De ce MongoDB pentru AuditLog?</strong><br/>
+  Audit logs au câmpuri variabile (detalii diferite per acțiune), volum mare (scriere intensivă), nu necesită JOIN-uri cu alte date. MongoDB este ideal: scriere rapidă, stocare flexibilă, scalabil orizontal.</p>
+</div>
+
+<h2>8. Implementarea AuditLog – modelul MongoDB</h2>
+
+<pre><code><span class="cmt">// AuditLog.java — document MongoDB</span>
+<span class="ann">@Document</span>(collection = <span class="str">"audit_logs"</span>)  <span class="cmt">// colecția MongoDB (echivalent tabelei SQL)</span>
+<span class="kw">public class</span> <span class="type">AuditLog</span> {
+
+    <span class="ann">@Id</span>           <span class="cmt">// câmpul _id din MongoDB (String, nu Long ca la JPA!)</span>
+    <span class="kw">private</span> String id;
+
+    <span class="ann">@Indexed</span>      <span class="cmt">// creează index pentru căutare rapidă după userId</span>
+    <span class="kw">private</span> Long userId;
+
+    <span class="kw">private</span> String action;     <span class="cmt">// "READ", "WRITE"</span>
+    <span class="kw">private</span> String resource;   <span class="cmt">// "UserProfile"</span>
+    <span class="kw">private</span> String details;    <span class="cmt">// "Loaded profile for user 1"</span>
+    <span class="kw">private</span> <span class="type">LocalDateTime</span> timestamp;
+
+    <span class="kw">public</span> <span class="type">AuditLog</span>(Long userId, String action, String resource, String details) {
+        <span class="kw">this</span>.userId    = userId;
+        <span class="kw">this</span>.action    = action;
+        <span class="kw">this</span>.resource  = resource;
+        <span class="kw">this</span>.details   = details;
+        <span class="kw">this</span>.timestamp = <span class="type">LocalDateTime</span>.now();
+    }
+}</code></pre>
+
+<h2>9. AuditLogRepository – MongoRepository</h2>
+
+<pre><code><span class="cmt">// AuditLogRepository.java</span>
+<span class="kw">public interface</span> <span class="type">AuditLogRepository</span> <span class="kw">extends</span> MongoRepository&lt;<span class="type">AuditLog</span>, String&gt; {
+    <span class="cmt">// MongoRepository&lt;Entity, IdType&gt;</span>
+    <span class="cmt">// Similar cu JpaRepository, dar pentru MongoDB</span>
+
+    <span class="cmt">// Derived query: Spring generează automat query-ul din numele metodei</span>
+    List&lt;<span class="type">AuditLog</span>&gt; findByUserIdOrderByTimestampDesc(Long userId);
+    <span class="cmt">// Echivalent: db.audit_logs.find({userId: X}).sort({timestamp: -1})</span>
+}
+
+<span class="cmt">// Metode moștenite din MongoRepository:</span>
+<span class="cmt">// save(entity), findById(id), findAll(), deleteById(id), count(), etc.</span></code></pre>
+
+<h2>10. AuditLogService – @Async pentru performanță</h2>
+
+<pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">AuditLogService</span> {
+
+    <span class="kw">private final</span> <span class="type">AuditLogRepository</span> auditLogRepository;
+
+    <span class="ann">@Async</span>   <span class="cmt">// Execuție asincronă — nu blochează request-ul principal!</span>
+    <span class="kw">public void</span> log(Long userId, String action, String resource, String details) {
+        <span class="cmt">// Această metodă rulează pe un thread separat din thread pool</span>
+        <span class="cmt">// Request-ul utilizatorului nu așteaptă salvarea în MongoDB</span>
+        auditLogRepository.save(<span class="kw">new</span> <span class="type">AuditLog</span>(userId, action, resource, details));
+    }
+
+    <span class="kw">public</span> List&lt;<span class="type">AuditLog</span>&gt; getLogsForUser(Long userId) {
+        <span class="kw">return</span> auditLogRepository.findByUserIdOrderByTimestampDesc(userId);
+    }
+}</code></pre>
+
+<div class="callout">
+  <p><strong>De ce @Async?</strong> Salvarea în MongoDB durează câteva ms. Dacă am salva sincron, utilizatorul ar astepta mai mult pentru fiecare request. Cu @Async, request-ul răspunde imediat și salvarea în MongoDB se face pe un thread de fundal. Necesită <code>@EnableAsync</code> pe aplicație sau pe o clasă @Configuration.</p>
+</div>
+
+<pre><code><span class="cmt">// Activare @Async — fie pe main class fie pe o clasă @Configuration</span>
+<span class="ann">@SpringBootApplication</span>
+<span class="ann">@EnableCaching</span>
+<span class="ann">@EnableAsync</span>   <span class="cmt">// activează suportul pentru @Async</span>
+<span class="kw">public class</span> <span class="type">UserServiceApplication</span> { ... }</code></pre>
+
+<h2>11. Endpoint AuditLog și cum se testează</h2>
+
+<pre><code><span class="cmt">// Endpoint în UserProfileController</span>
+<span class="ann">@GetMapping</span>(<span class="str">"/{userId}/audit"</span>)
+<span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+<span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;List&lt;<span class="type">AuditLog</span>&gt;&gt; getAuditLogs(<span class="ann">@PathVariable</span> Long userId) {
+    <span class="kw">return</span> ResponseEntity.ok(auditLogService.getLogsForUser(userId));
+}
+
+<span class="cmt">// Răspuns real din proiect:</span>
+<span class="cmt">// GET /api/profile/1/audit</span>
+<span class="cmt">// [</span>
+<span class="cmt">//   {</span>
+<span class="cmt">//     "id": "64abc...",</span>
+<span class="cmt">//     "userId": 1,</span>
+<span class="cmt">//     "action": "READ",</span>
+<span class="cmt">//     "resource": "UserProfile",</span>
+<span class="cmt">//     "details": "Loaded profile for user 1",</span>
+<span class="cmt">//     "timestamp": "2026-05-13T14:30:00"</span>
+<span class="cmt">//   }</span>
+<span class="cmt">// ]</span></code></pre>
+
+<h2>12. Adnotările @Cacheable, @CacheEvict, @CachePut comparate</h2>
+
+<table>
+  <tr><th>Adnotare</th><th>Comportament</th><th>Când se folosește</th></tr>
+  <tr><td><code>@Cacheable</code></td><td>Verifică cache înainte de metodă. Dacă există (HIT), returnează din cache. Dacă nu (MISS), execută metoda și salvează rezultatul în cache.</td><td>Metode de citire (GET)</td></tr>
+  <tr><td><code>@CacheEvict</code></td><td>Șterge intrarea din cache (înainte sau după metodă). Nu afectează rezultatul returnat.</td><td>Metode de scriere (PUT, DELETE)</td></tr>
+  <tr><td><code>@CachePut</code></td><td>Execută MEREU metoda și salvează rezultatul în cache. Nu verifică cache-ul înainte.</td><td>Când vrei să actualizezi cache-ul fără a sări metoda</td></tr>
+</table>
+
+<h2>13. Cum se testează (mock-uri pentru AuditLogService)</h2>
+
+<pre><code><span class="cmt">// În teste de integrare, mock-uim AuditLogService</span>
+<span class="cmt">// deoarece MongoDB nu rulează în mediul de test</span>
+<span class="ann">@SpringBootTest</span>
+<span class="ann">@ActiveProfiles</span>(<span class="str">"test"</span>)
+<span class="kw">class</span> <span class="type">UserProfileControllerTest</span> {
+
+    <span class="ann">@MockBean</span>
+    <span class="kw">private</span> <span class="type">AuditLogService</span> auditLogService;
+    <span class="cmt">// @MockBean înlocuiește bean-ul real cu un mock Mockito</span>
+    <span class="cmt">// Metodele @Async nu vor rula — sunt no-ops</span>
+}</code></pre>
+
+<h2>14. Întrebări posibile la examen</h2>
+
+<div class="qa">
+  <div class="q">Q: Ce este Redis și pentru ce îl folosim în proiect?</div>
+  <div class="a">Redis este o bază de date in-memory key-value. Datele sunt stocate în RAM (nu pe disc) deci accesul este extrem de rapid (sub 1ms față de 10-100ms pentru MySQL). În proiect îl folosim ca layer de cache pentru profilurile utilizatorilor: prima accesare face query SQL și salvează rezultatul în Redis cu TTL 10 minute. Apelurile următoare servesc direct din Redis fără SQL. Speedup demonstrat: 6000x (5ms cache vs 30000ms DB rece).</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @Cacheable și cum funcționează intern Spring?</div>
+  <div class="a">@Cacheable(value="profiles", key="#userId") spune Spring să verifice cache-ul "profiles" cu cheia userId înainte de execuție. Dacă există (HIT) → returnează din Redis fără a executa metoda. Dacă nu există (MISS) → execută metoda, salvează rezultatul în Redis, returnează rezultatul. Spring implementează asta prin AOP (proxy): creează un proxy în jurul metodei care interceptează apelul și decide dacă execută metoda sau returnează din cache.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce @CacheEvict pe metoda save() și nu @CachePut?</div>
+  <div class="a">@CacheEvict șterge intrarea din cache. La apelul următor de getByUserId(), va fi cache MISS și va încărca datele fresh din DB (cu modificările salvate). @CachePut ar actualiza cache-ul cu rezultatul returnat de save(), dar ar forța execuția întotdeauna. @CacheEvict este mai simplu și mai sigur — garantează că datele stale sunt eliminate fără a fi nevoie să returneze exact același format ca și getByUserId().</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce avem nevoie de Serializable pe UserProfileDto?</div>
+  <div class="a">Spring Cache (cu Redis backend) serializează obiectul în bytes folosind Java serialization pentru stocare. Orice obiect stocat în Redis trebuie să implementeze java.io.Serializable. serialVersionUID = 1L este un identifier al versiunii clasei — Spring/Java îl folosește la deserializare pentru a verifica compatibilitatea. Fără Serializable, Spring aruncă NotSerializableException la prima scriere în cache.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce diferență este între MongoDB și MySQL? Când alegi fiecare?</div>
+  <div class="a">MySQL este relațional: tabele cu schema fixă, suport complet pentru JOIN-uri și tranzacții ACID. MongoDB este document-oriented: colecții cu documente JSON flexibile (fără schema fixă), scalabil orizontal, ideal pentru logs și date semi-structurate. Alegi MySQL pentru date cu relații clare, integritate referențială, tranzacții complexe. Alegi MongoDB pentru logs/analytics (volum mare, scriere intensivă), date cu structură variabilă, scalabilitate orizontală.</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: Ce face @Async și de ce e important pentru AuditLog?</div>
+  <div class="a">@Async face ca metoda să ruleze pe un thread separat din thread pool (AsyncTaskExecutor), în loc de thread-ul curent al request-ului. Fără @Async: request-ul utilizatorului așteaptă salvarea în MongoDB înainte de a răspunde (latență adăugată). Cu @Async: request-ul răspunde imediat, salvarea în MongoDB se face în fundal. Necesită @EnableAsync pe aplicație. Dezavantaj: nu poți returna un rezultat sincron (returnezi void sau CompletableFuture).</div>
+</div>
+
+<div class="qa">
+  <div class="q">Q: De ce mock-uim AuditLogService în teste și cum?</div>
+  <div class="a">MongoDB nu rulează în mediul de test (este exclus din autoconfigurare în application-test.yml). Dacă am lăsa AuditLogService real, ar încerca să creeze AuditLogRepository care necesită MongoTemplate — ar arunca NoSuchBeanDefinitionException. Soluție: @MockBean AuditLogService înlocuiește bean-ul real cu un mock Mockito în contextul Spring. Metodele mock-ului nu fac nimic (void) sau returnează null/valori default.</div>
+</div>
+
+</div>
+
+<div class="container">
+<h2>15. Implementare pas cu pas — Redis Cache și MongoDB</h2>
+
+<div class="callout" style="background:#130f2d;border-left:4px solid #a78bfa;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Redis și MongoDB pornite prin Docker Compose (Tutorial 05). Dependințele Redis și MongoDB în pom.xml.</p>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 1 — Adaugă dependințele în pom.xml</strong>
+  <div style="margin-top:12px">
+    <pre><code>&lt;!-- Redis Cache --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-cache&lt;/artifactId&gt;
+&lt;/dependency&gt;
+
+&lt;!-- MongoDB (pentru AuditLog) --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-data-mongodb&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 2 — Configurează Redis în application.yml și activează caching</strong>
+  <div style="margin-top:12px">
+    <pre><code>spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+    mongodb:
+      uri: mongodb://localhost:27017/portaldb
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000   # TTL: 10 minute (în ms); cheia expiră automat după acest timp</code></pre>
+    <p>Activează caching în clasa principală sau în orice clasă <code>@Configuration</code>:</p>
+    <pre><code>@SpringBootApplication
+@EnableCaching    // activează procesarea adnotărilor @Cacheable, @CacheEvict
+public class UserServiceApplication { ... }</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 3 — Adaugă @Cacheable pe metode din Service</strong>
+  <div style="margin-top:12px">
+    <p>Entitățile care se pun în cache trebuie să implementeze <code>Serializable</code>:</p>
+    <pre><code>@Entity
+public class User implements Serializable {
+    private static final long serialVersionUID = 1L;
+    // ... câmpuri
+}</code></pre>
+    <p>Pe service, adaugă adnotările de cache:</p>
+    <pre><code>@Service
+public class UserService {
+
+    @Cacheable(value = "users", key = "#id")
+    // La primul apel: execută metoda și salvează rezultatul în Redis cu cheia "users::123"
+    // La apelurile următoare cu același id: returnează din Redis, fără query la MySQL
+    public UserDto findById(Long id) {
+        return UserDto.from(userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id)));
+    }
+
+    @CacheEvict(value = "users", key = "#id")
+    // La modificare/ștergere: invalidează cache-ul pentru acest id
+    public void delete(Long id) {
+        userRepository.deleteById(id);
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div style="background:#130f2d;border:1px solid #2d2060;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#a78bfa">Pasul 4 — Creează AuditLog în MongoDB</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>model/AuditLog.java</code> — document MongoDB, nu entitate JPA:</p>
+    <pre><code>@Document(collection = "audit_logs")   // salvat în MongoDB, nu MySQL
+public class AuditLog {
+    @Id
+    private String id;               // String, nu Long (MongoDB folosește ObjectId)
+    private String action;           // ex: "USER_CREATED"
+    private String username;
+    private LocalDateTime timestamp;
+}</code></pre>
+    <p>Creează <code>repository/AuditLogRepository.java</code>:</p>
+    <pre><code>public interface AuditLogRepository extends MongoRepository&lt;AuditLog, String&gt; { }</code></pre>
+    <p>Creează <code>service/AuditLogService.java</code> cu <code>@Async</code> — nu blochează thread-ul principal:</p>
+    <pre><code>@Service
+public class AuditLogService {
+
+    @Async   // se execută pe un thread separat din pool-ul de task-uri Spring
+    public void log(String action, String username) {
+        AuditLog log = new AuditLog();
+        log.setAction(action);
+        log.setUsername(username);
+        log.setTimestamp(LocalDateTime.now());
+        auditLogRepository.save(log);
+    }
+}</code></pre>
+    <p>Activează <code>@Async</code> în clasa principală: <code>@EnableAsync</code>.</p>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare cache:</strong> Apelează <code>GET /api/users/1</code> de două ori. Al doilea apel trebuie să fie mult mai rapid (0-2ms vs 20-50ms). Verifică în Redis:</p>
+  <pre><code>docker exec -it portal-redis redis-cli keys "*"
+# → "users::1"   (cheia din cache)</code></pre>
+  <p><strong>Verificare MongoDB:</strong> Interoghează colecția audit_logs:</p>
+  <pre><code>docker exec -it portal-mongodb mongosh portaldb --eval "db.audit_logs.find().pretty()"</code></pre>
+</div>
+</div>
+
+<footer>Portal Admitere – Tutorial 11: Redis Cache + MongoDB &nbsp;|&nbsp; <a href="index.html" style="color:#a78bfa">Toate tutorialele</a></footer>
+</body>
+</html>

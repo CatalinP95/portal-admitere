@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Docker Compose – Tutorial</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.7}
+    .topbar{background:#1e293b;padding:12px 24px;border-bottom:1px solid #334155}
+    .topbar a{color:#818cf8;text-decoration:none;font-size:.9rem}
+    header{background:linear-gradient(135deg,#0c4a6e,#0369a1);padding:48px 24px;text-align:center}
+    header h1{font-size:2rem;color:#fff;font-weight:700}
+    header p{color:#bae6fd;margin-top:8px;font-size:1.05rem}
+    .container{max-width:960px;margin:0 auto;padding:40px 24px}
+    h2{font-size:1.35rem;color:#38bdf8;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+    h3{font-size:1.1rem;color:#7dd3fc;margin:24px 0 8px}
+    p{color:#cbd5e1;margin-bottom:12px}
+    pre{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:20px;overflow-x:auto;margin:16px 0}
+    code{font-family:'Consolas','Fira Code',monospace;font-size:.84rem;color:#7dd3fc}
+    .yaml-key{color:#f472b6}
+    .yaml-val{color:#fbbf24}
+    .yaml-str{color:#34d399}
+    .yaml-comment{color:#475569;font-style:italic}
+    .callout{background:#1e293b;border-left:4px solid #38bdf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+    .callout.warn{border-color:#f59e0b}
+    .callout.tip{border-color:#10b981}
+    .callout p{margin:0;color:#cbd5e1;font-size:.93rem}
+    .callout strong{color:#e2e8f0}
+    .services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:24px 0}
+    .svc{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px}
+    .svc h4{color:#38bdf8;font-size:1rem;margin-bottom:8px}
+    .svc .port{display:inline-block;background:#0c4a6e;color:#bae6fd;font-size:.78rem;padding:2px 10px;border-radius:20px;margin-right:6px;margin-bottom:6px;font-family:monospace}
+    .svc p{font-size:.85rem;color:#94a3b8;margin:6px 0 0}
+    .cmd{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 18px;margin:12px 0;font-family:monospace;font-size:.88rem}
+    .cmd .prompt{color:#475569}
+    .cmd .command{color:#34d399}
+    table{width:100%;border-collapse:collapse;margin:16px 0}
+    th{background:#1e293b;color:#38bdf8;padding:10px 14px;text-align:left;font-size:.9rem}
+    td{padding:10px 14px;border-bottom:1px solid #1e293b;color:#cbd5e1;font-size:.88rem}
+    td code{color:#7dd3fc;font-size:.83rem}
+    footer{text-align:center;padding:30px;color:#475569;font-size:.85rem;border-top:1px solid #1e293b;margin-top:40px}
+    .qa-block{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin:12px 0}
+    .qa-q{color:#38bdf8;font-weight:700;margin-bottom:6px;font-size:.95rem}
+    .qa-a{color:#cbd5e1;font-size:.9rem;padding-left:16px;border-left:3px solid #0369a1;margin-bottom:0;line-height:1.65}
+  </style>
+</head>
+<body>
+  <div class="topbar"><a href="index.html">← Înapoi la tutoriale</a></div>
+
+  <header>
+    <h1>🐳 Docker Compose</h1>
+    <p>Infrastructura completă cu un singur comandă – MySQL, RabbitMQ, Redis, Prometheus, Grafana</p>
+  </header>
+
+  <div class="container">
+
+    <h2>Ce este Docker Compose?</h2>
+    <p>Docker Compose definește și rulează mai multe containere Docker simultan folosind un fișier YAML. Ideal pentru medii de dezvoltare: nu trebuie să instalezi MySQL, RabbitMQ etc. local – totul rulează în containere izolate.</p>
+
+    <div class="callout">
+      <p><strong>Avantaj:</strong> Un singur <code>docker compose up -d</code> pornește toate serviciile de infrastructură. Totul rulează izolat, nu "poluează" Windows-ul cu instalări globale.</p>
+    </div>
+
+    <h2>Servicii din proiect</h2>
+    <div class="services-grid">
+      <div class="svc">
+        <h4>🗄️ MySQL</h4>
+        <span class="port">3306</span>
+        <p>Baza de date relațională pentru users, tokens, profiles</p>
+      </div>
+      <div class="svc">
+        <h4>🐇 RabbitMQ</h4>
+        <span class="port">5672 AMQP</span><span class="port">15672 UI</span>
+        <p>Message broker pentru comunicare asincronă între microservicii</p>
+      </div>
+      <div class="svc">
+        <h4>⚡ Redis</h4>
+        <span class="port">6379</span>
+        <p>Cache in-memory pentru tokeni de refresh, sesiuni, date frecvente</p>
+      </div>
+      <div class="svc">
+        <h4>📈 Prometheus</h4>
+        <span class="port">9090</span>
+        <p>Colectează metrici de la serviciile Spring Boot prin /actuator/prometheus</p>
+      </div>
+      <div class="svc">
+        <h4>📊 Grafana</h4>
+        <span class="port">3000</span>
+        <p>Dashboard-uri vizuale pentru metrici. User: admin / Pass: admin</p>
+      </div>
+    </div>
+
+    <h2>docker-compose.yml – fișierul complet</h2>
+    <pre><code><span class="yaml-key">version</span>: <span class="yaml-str">'3.8'</span>
+
+<span class="yaml-key">services</span>:
+
+  <span class="yaml-key">mysql</span>:
+    <span class="yaml-key">image</span>: <span class="yaml-str">mysql:8.0</span>
+    <span class="yaml-key">container_name</span>: <span class="yaml-str">portal-mysql</span>
+    <span class="yaml-key">environment</span>:
+      <span class="yaml-key">MYSQL_ROOT_PASSWORD</span>: <span class="yaml-str">""</span>
+      <span class="yaml-key">MYSQL_ALLOW_EMPTY_PASSWORD</span>: <span class="yaml-str">"yes"</span>
+      <span class="yaml-key">MYSQL_DATABASE</span>: <span class="yaml-str">portal_admitere_users</span>
+    <span class="yaml-key">ports</span>:
+      - <span class="yaml-str">"3306:3306"</span>
+    <span class="yaml-key">volumes</span>:
+      - <span class="yaml-str">mysql-data:/var/lib/mysql</span>
+
+  <span class="yaml-key">rabbitmq</span>:
+    <span class="yaml-key">image</span>: <span class="yaml-str">rabbitmq:3-management</span>
+    <span class="yaml-key">container_name</span>: <span class="yaml-str">portal-rabbitmq</span>
+    <span class="yaml-key">ports</span>:
+      - <span class="yaml-str">"5672:5672"</span>   <span class="yaml-comment"># AMQP (conexiune aplicație)</span>
+      - <span class="yaml-str">"15672:15672"</span> <span class="yaml-comment"># Management UI</span>
+    <span class="yaml-key">environment</span>:
+      <span class="yaml-key">RABBITMQ_DEFAULT_USER</span>: <span class="yaml-str">guest</span>
+      <span class="yaml-key">RABBITMQ_DEFAULT_PASS</span>: <span class="yaml-str">guest</span>
+
+  <span class="yaml-key">redis</span>:
+    <span class="yaml-key">image</span>: <span class="yaml-str">redis:7-alpine</span>
+    <span class="yaml-key">container_name</span>: <span class="yaml-str">portal-redis</span>
+    <span class="yaml-key">ports</span>:
+      - <span class="yaml-str">"6379:6379"</span>
+
+  <span class="yaml-key">prometheus</span>:
+    <span class="yaml-key">image</span>: <span class="yaml-str">prom/prometheus</span>
+    <span class="yaml-key">container_name</span>: <span class="yaml-str">portal-prometheus</span>
+    <span class="yaml-key">volumes</span>:
+      - <span class="yaml-str">./prometheus.yml:/etc/prometheus/prometheus.yml</span>
+    <span class="yaml-key">ports</span>:
+      - <span class="yaml-str">"9090:9090"</span>
+
+  <span class="yaml-key">grafana</span>:
+    <span class="yaml-key">image</span>: <span class="yaml-str">grafana/grafana</span>
+    <span class="yaml-key">container_name</span>: <span class="yaml-str">portal-grafana</span>
+    <span class="yaml-key">ports</span>:
+      - <span class="yaml-str">"3000:3000"</span>
+    <span class="yaml-key">environment</span>:
+      - <span class="yaml-str">GF_SECURITY_ADMIN_PASSWORD=admin</span>
+    <span class="yaml-key">depends_on</span>:
+      - <span class="yaml-str">prometheus</span>
+
+<span class="yaml-key">volumes</span>:
+  <span class="yaml-key">mysql-data</span>:</code></pre>
+
+    <h2>Comenzi Docker Compose</h2>
+    <div class="cmd">
+      <span class="prompt">PS portal-admitere&gt; </span><span class="command">docker compose up -d</span>
+    </div>
+    <p>Pornește toate containerele în background (<code>-d</code> = detached). Prima rulare descarcă imaginile.</p>
+
+    <div class="cmd">
+      <span class="prompt">PS portal-admitere&gt; </span><span class="command">docker compose down</span>
+    </div>
+    <p>Oprește și șterge containerele (datele MySQL sunt păstrate în volume).</p>
+
+    <div class="cmd">
+      <span class="prompt">PS portal-admitere&gt; </span><span class="command">docker compose ps</span>
+    </div>
+    <p>Listează statusul tuturor containerelor.</p>
+
+    <div class="cmd">
+      <span class="prompt">PS portal-admitere&gt; </span><span class="command">docker compose logs rabbitmq -f</span>
+    </div>
+    <p>Urmărește log-urile unui serviciu specific în timp real (<code>-f</code> = follow).</p>
+
+    <h2>Verificare servicii pornite</h2>
+    <table>
+      <tr><th>Serviciu</th><th>URL verificare</th><th>Credențiale</th></tr>
+      <tr><td>RabbitMQ Management</td><td><code>http://localhost:15672</code></td><td>guest / guest</td></tr>
+      <tr><td>Prometheus</td><td><code>http://localhost:9090</code></td><td>-</td></tr>
+      <tr><td>Grafana</td><td><code>http://localhost:3000</code></td><td>admin / admin</td></tr>
+      <tr><td>MySQL</td><td>Conexiune MySQL client port 3306</td><td>root / (gol)</td></tr>
+      <tr><td>Redis</td><td><code>redis-cli -p 6379 ping</code></td><td>-</td></tr>
+    </table>
+
+    <h2>Cum se leagă Spring Boot de Docker</h2>
+    <pre><code><span class="yaml-comment"># application.yml – Spring Boot se conectează la serviciile Docker</span>
+<span class="yaml-key">spring</span>:
+  <span class="yaml-key">datasource</span>:
+    <span class="yaml-key">url</span>: <span class="yaml-str">jdbc:mysql://localhost:3306/portal_admitere_users</span>
+    <span class="yaml-comment">                       # ↑ containerul MySQL ascultă pe portul 3306 al hostului</span>
+  <span class="yaml-key">rabbitmq</span>:
+    <span class="yaml-key">host</span>: <span class="yaml-str">localhost</span>
+    <span class="yaml-key">port</span>: <span class="yaml-str">5672</span>
+  <span class="yaml-key">data</span>:
+    <span class="yaml-key">redis</span>:
+      <span class="yaml-key">host</span>: <span class="yaml-str">localhost</span>
+      <span class="yaml-key">port</span>: <span class="yaml-str">6379</span></code></pre>
+
+    <div class="callout tip">
+      <p><strong>host.docker.internal:</strong> În prometheus.yml, target-urile sunt <code>host.docker.internal:8081</code> (nu localhost), deoarece Prometheus rulează ÎN container. Din containerul Prometheus, "localhost" ar fi containerul însuși, nu Windows-ul. <code>host.docker.internal</code> rezolvă la IP-ul mașinii gazdă.</p>
+    </div>
+
+    <h2>Volum persistent pentru MySQL</h2>
+    <p>Datele MySQL sunt stocate în volumul Docker <code>mysql-data</code>. Chiar dacă faci <code>docker compose down</code>, datele rămân. Sunt șterse doar cu:</p>
+    <div class="cmd">
+      <span class="prompt">PS portal-admitere&gt; </span><span class="command">docker compose down -v</span>
+    </div>
+
+    <div class="callout warn">
+      <p><strong>Atenție:</strong> <code>docker compose down -v</code> șterge volumele și implicit toate datele din MySQL! Folosește doar dacă vrei un fresh start complet.</p>
+    </div>
+
+    <h2>Întrebări frecvente la examen</h2>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face docker compose up -d și ce înseamnă flag-ul -d?</div>
+      <div class="qa-a"><code>docker compose up</code> pornește toate serviciile definite în <code>docker-compose.yml</code>. Flag-ul <code>-d</code> (detached) le pornește în background — terminalul rămâne liber. Prima rulare descarcă imaginile de pe Docker Hub. Fără <code>-d</code>, log-urile tuturor containerelor sunt afișate în terminal și Ctrl+C oprește totul.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Care este diferența dintre docker compose down și docker compose down -v?</div>
+      <div class="qa-a"><code>docker compose down</code> — oprește și șterge containerele, dar <strong>volumele Docker rămân</strong>. Datele din MySQL sunt păstrate. <code>docker compose down -v</code> — oprește containerele ȘI <strong>șterge volumele</strong>, inclusiv datele MySQL. Folosit pentru un fresh start complet. Atenție: <code>-v</code> este ireversibil!</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: De ce în prometheus.yml target-ul este host.docker.internal și nu localhost?</div>
+      <div class="qa-a">Prometheus rulează <strong>în container Docker</strong>. Din perspectiva containerului, <code>localhost</code> = containerul însuși (nu Windows-ul). <code>host.docker.internal</code> este un hostname special rezolvat la IP-ul mașinii gazdă (Windows). Astfel Prometheus poate ajunge la Spring Boot care rulează direct pe Windows la <code>host.docker.internal:8081</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce este un Docker volume și de ce e important pentru MySQL?</div>
+      <div class="qa-a">Un Docker volume (<code>mysql-data:/var/lib/mysql</code>) este un director gestionat de Docker care persistă datele <strong>independent de containerul</strong> în care este montat. Dacă containerul MySQL este șters și recreat (ex: upgrade versiune), datele rămân în volum. Fără volum, datele s-ar pierde la fiecare <code>docker compose down</code>.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Ce face depends_on în docker-compose.yml?</div>
+      <div class="qa-a"><code>depends_on: [prometheus]</code> în configurarea Grafana specifică că Grafana nu pornește înainte de Prometheus. Docker Compose respectă ordinea de pornire. Atenție: <code>depends_on</code> verifică doar că containerul a <strong>pornit</strong>, nu că serviciul din el este <strong>ready</strong> (MySQL poate dura câteva secunde să accepte conexiuni după pornire).</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum verifici că un container rulează corect și cum urmărești log-urile?</div>
+      <div class="qa-a"><code>docker compose ps</code> — listează statusul (Up/Exit) pentru fiecare serviciu. <code>docker compose logs &lt;serviciu&gt;</code> — afișează log-urile complete. <code>docker compose logs &lt;serviciu&gt; -f</code> — urmărești log-urile în timp real (<code>-f</code> = follow). <code>docker compose logs --tail=50 mysql</code> — ultimele 50 linii de log din MySQL.</div>
+    </div>
+
+    <div class="qa-block">
+      <div class="qa-q">Î: Cum se conectează Spring Boot la serviciile din Docker Compose?</div>
+      <div class="qa-a">Spring Boot rulează <strong>în afara Docker</strong> (direct pe Windows), deci se conectează la containerele prin porturile expuse pe <code>localhost</code>. În <code>application.yml</code>: MySQL → <code>jdbc:mysql://localhost:3306/...</code>, Redis → <code>host: localhost, port: 6379</code>, RabbitMQ → <code>host: localhost, port: 5672</code>. Dacă Spring Boot ar rula și el în container, s-ar folosi numele serviciului (ex: <code>mysql:3306</code>) prin rețeaua internă Docker.</div>
+    </div>
+
+  </div>
+
+<div class="container">
+<h2>Implementare pas cu pas — Docker Compose</h2>
+
+<div class="callout" style="background:#0f2744;border-left:4px solid #38bdf8;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Prerequisite:</strong> Docker Desktop instalat și pornit (iconița din system tray verde). Vezi <a href="prerequisites.html" style="color:#38bdf8">pagina de prerequisite</a>.</p>
+</div>
+
+<div style="background:#0b1929;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 1 — Creează docker-compose.yml în rădăcina proiectului</strong>
+  <div style="margin-top:12px">
+    <p>Creează fișierul <code>docker-compose.yml</code> la nivelul <code>portal-admitere/</code>:</p>
+    <pre><code>version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: portal-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: portaldb
+    ports:
+      - "3306:3306"       # portul hostului : portul containerului
+    volumes:
+      - mysql_data:/var/lib/mysql   # persistență date
+
+  redis:
+    image: redis:7-alpine
+    container_name: portal-redis
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: portal-rabbitmq
+    ports:
+      - "5672:5672"       # AMQP (aplicații)
+      - "15672:15672"     # Management UI (browser)
+
+  prometheus:
+    image: prom/prometheus
+    container_name: portal-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    container_name: portal-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+volumes:
+  mysql_data:</code></pre>
+  </div>
+</div>
+
+<div style="background:#0b1929;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 2 — Creează prometheus.yml</strong>
+  <div style="margin-top:12px">
+    <p>Creează <code>prometheus.yml</code> în rădăcina proiectului:</p>
+    <pre><code>global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+        # host.docker.internal = adresa calculatorului gazdă, accesibilă din container</code></pre>
+  </div>
+</div>
+
+<div style="background:#0b1929;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 3 — Pornește infrastructura</strong>
+  <div style="margin-top:12px">
+    <p>Din folderul rădăcină al proiectului (unde se află docker-compose.yml):</p>
+    <pre><code># Prima oară — descarcă imaginile (3-5 minute)
+docker compose up -d
+
+# Verifică că toate containerele rulează
+docker compose ps
+
+# Vizualizează log-urile unui serviciu (ex: mysql)
+docker compose logs mysql</code></pre>
+  </div>
+</div>
+
+<div style="background:#0b1929;border:1px solid #1e3a5f;border-radius:8px;padding:20px 24px;margin:16px 0">
+  <strong style="color:#38bdf8">Pasul 4 — Comenzi utile</strong>
+  <div style="margin-top:12px">
+    <pre><code># Oprire fără ștergerea volumelor (datele din MySQL se păstrează)
+docker compose stop
+
+# Pornire din nou
+docker compose start
+
+# Oprire ȘI ștergere containere (datele din volume se păstrează)
+docker compose down
+
+# Oprire ȘI ștergere containere ȘI volume (MySQL se resetează!)
+docker compose down -v
+
+# Repornire un singur serviciu (ex: grafana)
+docker compose up -d --force-recreate grafana</code></pre>
+  </div>
+</div>
+
+<div style="background:#022c22;border-left:4px solid #10b981;padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0">
+  <p><strong>Verificare:</strong> După <code>docker compose up -d</code>, testează că fiecare serviciu răspunde:</p>
+  <pre><code>MySQL:    docker exec portal-mysql mysql -u root -proot -e "SELECT 1"
+Redis:    docker exec portal-redis redis-cli ping          # răspuns: PONG
+RabbitMQ: http://localhost:15672  (guest/guest)
+Prometheus: http://localhost:9090
+Grafana:  http://localhost:3000  (admin/admin)</code></pre>
+</div>
+</div>
+
+  <footer>Portal Admitere – Tutorial Docker Compose &nbsp;|&nbsp; <a href="index.html" style="color:#38bdf8">Toate tutorialele</a></footer>
+</body>
+</html>
